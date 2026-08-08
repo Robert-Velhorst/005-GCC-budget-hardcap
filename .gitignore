@@ -1,0 +1,15 @@
+node_modules/
+.env
+.env.*
+!.env.example
+coverage/
+.nyc_output/
+*.log
+tmp/
+support-bundle*.json
+infra/terraform/.terraform/
+infra/terraform/*.tfstate*
+infra/terraform/*.tfplan
+infra/terraform/budget-hardcap-source.zip
+.DS_Store
+Thumbs.db

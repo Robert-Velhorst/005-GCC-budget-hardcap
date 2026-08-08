@@ -1,0 +1,16 @@
+project_id           = "your-project-id"
+region               = "europe-west4"
+allowed_budget_names = ["Production hardcap"]
+expected_currency    = "EUR"
+allowed_zones        = ["europe-west4-a", "europe-west4-b"]
+
+# First deployment must remain read-only.
+execution_mode    = "plan"
+automation_enabled = false
+
+# Set false if the project already has a default Firestore database.
+create_firestore_database = true
+firestore_location         = "eur3"
+
+# Example: ["group:cloud-operators@example.com"]
+health_invoker_members = []

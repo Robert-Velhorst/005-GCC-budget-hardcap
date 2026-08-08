@@ -1,18 +1,40 @@
 {
-    "name": "stop-budget-automation",
-    "version": "1.0.0",
-    "main": "index.js",
-    "scripts": {
-      "test": "echo \"Error: no test specified\" && exit 1"
-    },
-    "keywords": [],
-    "author": "",
-    "license": "ISC",
-    "type": "commonjs",
-    "description": "",
-    "dependencies": {
-      "@google-cloud/compute": "^4.11.0",
-      "@google-cloud/resource-manager": "^5.3.0",
-      "googleapis": "^144.0.0"
-    }
+  "name": "gcc-budget-hardcap",
+  "version": "2.0.0",
+  "description": "Fail-safe Google Cloud budget automation for scoped Compute Engine instances.",
+  "main": "index.js",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "functions-framework --target=manageInstancesOnBudget --signature-type=cloudevent",
+    "start:health": "functions-framework --target=healthCheck --signature-type=http --port=8081",
+    "lint": "node scripts/check-syntax.js",
+    "test": "node --test",
+    "test:coverage": "c8 --check-coverage --lines 85 --functions 80 --branches 75 node --test",
+    "smoke": "node scripts/smoke.js",
+    "doctor": "node scripts/doctor.js",
+    "reconcile": "node scripts/reconcile.js",
+    "support:bundle": "node scripts/support-bundle.js"
+  },
+  "keywords": [
+    "google-cloud",
+    "billing",
+    "budget",
+    "compute-engine",
+    "cloud-functions"
+  ],
+  "license": "ISC",
+  "dependencies": {
+    "@google-cloud/firestore": "8.7.1",
+    "@google-cloud/functions-framework": "5.0.5",
+    "googleapis": "174.0.1"
+  },
+  "devDependencies": {
+    "c8": "12.0.0"
+  },
+  "overrides": {
+    "uuid": "11.1.1"
   }
+}

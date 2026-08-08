@@ -1,154 +1,121 @@
-# 📌 Google Cloud Budget Automation – Stop & Start VMs
+# Google Cloud Budget Hardcap
 
-## 🖥️ Overview
+A fail-safe Google Cloud Function that consumes Cloud Billing budget notifications from Pub/Sub and submits scoped Compute Engine stop actions when a configured threshold is reached.
 
-This Cloud Function **automates instance management** based on budget alerts from Google Cloud Billing.
+The service starts in read-only `plan` mode. Production execution is impossible until the operator explicitly enables it and supplies budget, currency, and zone allowlists. It never manages an unlabelled VM, never restarts a VM it did not record as stopped, and persists event/action history in Firestore before changing cloud state.
 
-- **If budget exceeds $10** → **Stops all instances**
-- **If budget is below $10** → **Restarts all instances**
+## Safety model
 
-It listens for budget alerts via **Google Pub/Sub** and takes action accordingly. The automation works with any billing account that sends alerts to the configured `budget-alerts` topic.
+- Default mode is `plan`; no VM action is submitted.
+- `execute` mode requires `ALLOWED_BUDGET_NAMES`, `EXPECTED_CURRENCY`, and `ALLOWED_ZONES`; provider actions additionally require `AUTOMATION_ENABLED=true`.
+- Only `RUNNING` VMs with `budget-hardcap=true` can be stopped.
+- `budget-hardcap-protected=true`, excluded names, wrong zones, and wrong states are rejected.
+- Every event is claimed in Firestore and every action intent is stored before the Compute API call.
+- Deterministic Compute `requestId` values protect retries from duplicate provider actions.
+- A cooldown, maximum action count, action delay, and stale-event limit constrain blast radius.
+- Recovery is disabled by default and only targets `TERMINATED` VMs previously recorded as stopped by this service.
+- Provider failures are rethrown so Eventarc/Pub/Sub retry policy can act.
 
-## 🚀 Setup & Deployment Guide
+## Workflow
 
-### 1️⃣ Prerequisites
+```text
+Pub/Sub CloudEvent
+  -> decode and validate payload
+  -> verify budget name, currency, and freshness
+  -> evaluate stop/recovery/no-action policy
+  -> generate a scoped plan
+  -> claim event and enforce cooldown/action cap
+  -> persist action intent
+  -> submit Compute Engine request with deterministic requestId
+  -> persist provider operation and managed-instance state
+  -> structured Cloud Logging record and optional Pub/Sub notification
+```
 
-Ensure you have the following:
+## Local setup
 
-- ✅ **Google Cloud Project** with **Compute Engine & Cloud Functions enabled**
-- ✅ **Billing Alerts & Budgets configured**
-- ✅ **Pub/Sub topic** (`budget-alerts`) linked to the budget
-- ✅ **IAM roles** assigned to service accounts
-
-### 2️⃣ Deploying the Function
-
-#### 💡 Step 1: Clone the Repository
+Requirements: Node.js 20 and npm.
 
 ```sh
-git clone https://github.com/YOUR_GITHUB_USERNAME/budget-automation.git
-cd budget-automation
+npm ci
 ```
 
-#### 💡 Step 2: Install Dependencies
+Create local configuration from `.env.example`. Environment files are ignored by Git. A local smoke test uses a clearly labelled test-only provider and cannot touch Google Cloud:
 
 ```sh
-npm install
+npm run lint
+npm test
+npm run test:coverage
+npm run smoke
 ```
 
-#### 💡 Step 3: Deploy the Cloud Function
+Validate configuration without provider access:
 
 ```sh
-gcloud functions deploy manageInstancesOnBudget \
-    --runtime=nodejs20 \
-    --trigger-topic=budget-alerts \
-    --service-account=budget-automation-sa@YOUR_PROJECT_ID.iam.gserviceaccount.com \
-    --region=us-central1 \
-    --allow-unauthenticated
+PROJECT_ID=your-project-id npm run doctor
 ```
 
-🚀 This deploys the function to **Google Cloud Functions** and links it to the **budget-alerts Pub/Sub topic**.
-
-## ⚙️ How It Works
-
-### 🔹 Step 1: Receiving Budget Alerts
-
-1. The function listens to **budget-alerts** from **Google Cloud Billing**
-2. It **extracts the budget amount** (`costAmount`)
-3. **If** `costAmount` >= 10 → It **stops all Compute Engine instances**
-4. **If** `costAmount` < 10 → It **restarts all stopped instances**
-
-### 🔹 Step 2: Stopping/Starting Instances
-
-#### 🔴 Stopping VMs:
-
-- Lists **all running instances**
-- Calls **Google Compute API** to stop them
-
-#### ▶️ Starting VMs:
-
-- Lists **all stopped instances**
-- Calls **Google Compute API** to restart them
-
-### 🔹 Step 3: Multi-Budget Support
-
-The automation is designed to work with multiple budget sources:
-
-- Function listens to the `budget-alerts` Pub/Sub topic
-- **Any budget** (including main billing account) that publishes to this topic will trigger the automation
-- All budget alerts are processed identically:
-  - Same threshold rules apply ($10 limit)
-  - Same instance management actions (stop/start)
-- This allows for centralized budget control across different billing accounts
-
-## 📊 Monitoring and Alerts
-
-### 📝 Monitoring Logs
-
-You can view real-time logs in Google Cloud by navigating to Cloud Functions → Logs. You'll see entries like:
-
-```
-📩 Received Budget Alert
-⚠️ Budget exceeded! Stopping all instances...
-✅ Successfully stopped [instance-name] in [zone]
-```
-
-### 📧 Email Alerts
-
-- Email notifications are sent whenever the budget limit is exceeded
-- Configured email address: noodzakelijkonline@gmail.com
-- If you haven't received alerts, contact support to verify notification setup
-
-### 🧪 Testing
-
-You can manually test the automation:
-
-- Trigger the function to simulate an over-budget scenario
-- This will stop instances and generate logs
-- Customize budget thresholds by modifying the Pub/Sub topic configuration
-
-## 🔑 IAM Permissions Needed
-
-For the **service account** (`budget-automation-sa@YOUR_PROJECT_ID.iam.gserviceaccount.com`), assign these **IAM roles**:
-
-| Role                             | Purpose                              |
-| -------------------------------- | ------------------------------------ |
-| `roles/compute.instanceAdmin.v1` | Manage Compute Engine instances      |
-| `roles/pubsub.subscriber`        | Listen to budget alerts from Pub/Sub |
-| `roles/cloudfunctions.invoker`   | Allow invoking the Cloud Function    |
-
-✅ Assign roles using:
+With Application Default Credentials, verify read-only Compute project access:
 
 ```sh
-gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
-    --member="serviceAccount:budget-automation-sa@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
-    --role="roles/compute.instanceAdmin.v1"
+PROJECT_ID=your-project-id npm run doctor -- --provider
 ```
 
-## 🛠️ Debugging
+## Configuration
 
-Check logs in **Google Cloud Console**:
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `PROJECT_ID` | Runtime project | Compute Engine project |
+| `EXECUTION_MODE` | `plan` | `plan` or `execute` |
+| `AUTOMATION_ENABLED` | `false` | Emergency execution switch |
+| `ALLOWED_BUDGET_NAMES` | empty | Exact accepted budget display names; required for execution |
+| `EXPECTED_CURRENCY` | empty | Expected ISO currency; required for execution |
+| `ALLOWED_ZONES` | empty | Permitted VM zones; required for execution |
+| `BUDGET_LIMIT` | `10` | Absolute fallback when no budget amount is present |
+| `THRESHOLD_RATIO` | `1` | Actual/forecast threshold ratio |
+| `MANAGED_LABEL_KEY/VALUE` | `budget-hardcap=true` | Required VM scope label |
+| `PROTECTED_LABEL_KEY/VALUE` | `budget-hardcap-protected=true` | VM protection label |
+| `EXCLUDED_INSTANCES` | empty | Comma-separated instance names denied explicitly |
+| `MAX_ACTIONS_PER_EVENT` | `20` | Fail-closed per-event action cap |
+| `ACTION_DELAY_MS` | `250` | Delay between provider requests |
+| `COOLDOWN_SECONDS` | `300` | Repeated-decision cooldown |
+| `MAX_EVENT_AGE_SECONDS` | `86400` | Reject stale budget events |
+| `EVENT_LEASE_SECONDS` | `600` | Event-processing lease |
+| `ENABLE_AUTOMATIC_RECOVERY` | `false` | Enable audit-backed restart policy |
+| `RECOVERY_DELAY_SECONDS` | `3600` | Minimum time before recovery |
+| `FIRESTORE_DATABASE_ID` | `(default)` | Firestore database |
+| `FIRESTORE_PREFIX` | `budgetHardcap` | Collection prefix |
+| `NOTIFICATION_TOPIC` | empty | Optional operator notification topic |
+
+## Deploy
+
+Terraform is the supported deployment path. It enables required APIs, creates the budget topic, service account, least-privilege custom VM role, optional Firestore database, source package, and second-generation Cloud Function.
 
 ```sh
-gcloud functions logs read manageInstancesOnBudget
+cd infra/terraform
+cp terraform.tfvars.example terraform.tfvars
+terraform init
+terraform plan -out=budget-hardcap.tfplan
+terraform apply budget-hardcap.tfplan
 ```
 
-If Pub/Sub isn't triggering:
+Keep the first deployment at `execution_mode = "plan"` and `automation_enabled = false`. Connect the emitted Pub/Sub topic to the intended Cloud Billing budget, label a disposable test VM, publish a real budget test notification, and inspect structured logs. Only then change both execution controls.
 
-```sh
-gcloud pubsub subscriptions pull projects/YOUR_PROJECT_ID/subscriptions/budget-alerts-sub --auto-ack
-```
+If a default Firestore database already exists, set `create_firestore_database = false`. Terraform state and plans are ignored and must be stored in an access-controlled remote backend for team use.
 
-## 📜 Code Structure
+## Operations
 
-```
-📂 budget-automation/
-┣ 📜 index.js     # Main Cloud Function logic
-┣ 📜 package.json # Dependencies & scripts
-┣ 📜 README.md    # Documentation
-```
+- `npm run doctor -- --provider`: read-only credential/project check.
+- `npm run reconcile`: dry-run review of ambiguous stop intents.
+- `npm run reconcile -- --apply`: persist reconciled states after operator review.
+- `npm run support:bundle`: print a redacted diagnostic bundle.
+- `AUTOMATION_ENABLED=false`: emergency stop for new external actions.
+- `EXECUTION_MODE=plan`: retain read-only planning and logging.
 
-## ✅ Conclusion
+Detailed procedures are in [docs/OPERATOR_RUNBOOK.md](docs/OPERATOR_RUNBOOK.md), security boundaries in [docs/SECURITY.md](docs/SECURITY.md), and implementation status in [docs/GOAL_COMPLETION_MATRIX.md](docs/GOAL_COMPLETION_MATRIX.md).
 
-- This function **automates Google Cloud instance management** based on **budget alerts**
-- Supports **any billing account** as long as it publishes to the `budget-alerts` Pub/Sub topic
-- Fully **configurable** and **easy to deploy**
+## Limitations
+
+- Budget notifications are not real-time hard spending caps; Google documents delivery delay and costs may continue to accrue.
+- Compute start/stop calls return long-running operations. The service records `SUBMITTED`, not false success.
+- A live Google Cloud deployment and destructive disposable-VM acceptance test require the operator's project, billing budget, credentials, and approval. They are not simulated as completed.
+- There is no frontend, session system, database migration layer, upload surface, AI provider, or SaaS billing surface because they are not part of this worker.
