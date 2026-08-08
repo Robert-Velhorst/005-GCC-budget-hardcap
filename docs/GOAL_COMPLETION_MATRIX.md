@@ -96,12 +96,12 @@ Status reflects repository implementation, not unperformed Google Cloud account 
 | 089 Stabilization gates | Implemented | CI plus plan-first rollout |
 | 090 No vanity work | Implemented | Inapplicable product surfaces omitted |
 | 091 Feature definition of done | Implemented | Tests/docs/wiring required per critical path |
-| 092 Fresh-clone dry run | Pending | To be executed after final file set/commit |
+| 092 Fresh-clone dry run | Implemented | Node 20 clean install, lint, coverage, smoke, no-cache image |
 | 093 Manual evidence | Partial | Local automated evidence complete; live evidence blocked |
-| 094 No-excuses search | Pending | To be rerun at final verification |
+| 094 No-excuses search | Implemented | Placeholder, secret, generated-file, diff, and status scans |
 | 095 Completion matrix | Implemented | This document |
-| 096 Final verification | Pending | Updated after final command pass |
-| 097 Final response | Pending | Supplied at handoff |
+| 096 Final verification | Implemented | `docs/FINAL_VERIFICATION_REPORT.md` |
+| 097 Final response | Implemented | Evidence-based handoff supplied without live-provider claims |
 | 098 Maintenance plan | Implemented | Dependabot, CI, retention, release guidance |
 | 099 Roadmap/blocked items | Implemented | Verification report limitations |
 | 100 Provider cleanup | Implemented | Runbook retirement procedure |

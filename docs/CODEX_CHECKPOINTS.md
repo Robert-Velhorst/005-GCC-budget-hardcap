@@ -4,7 +4,7 @@
 
 - Repository: `Noodzakelijk-Online/005-GCC-budget-hardcap`
 - Working branch: `main`
-- Starting commit: `51a6644`
+- Starting commit: `51a6644`; implementation checkpoint: `a4f906c`.
 - Product: Node.js 20 Cloud Function, Pub/Sub CloudEvent input, Compute Engine provider, Firestore audit/state.
 - Default safety posture: `plan`, automation disabled, recovery disabled.
 - Test-only behavior: `scripts/smoke.js` and test fakes only; production code has no fake-provider switch.

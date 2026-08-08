@@ -6,10 +6,11 @@
 | --- | --- | --- | --- |
 | Syntax | `npm run lint` | All JavaScript parses | Passed |
 | Unit/integration | `npm test` | All tests pass | Passed, 36 tests |
-| Coverage | `npm run test:coverage` | >=85 lines, >=80 functions, >=75 branches | Passed: 96.63 / 94.8 / 84.63 |
+| Coverage | `npm run test:coverage` | >=85 lines, >=80 functions, >=75 branches | Node 20 passed: 96.63 / 93.58 / 84.90 |
 | Test-only critical path | `npm run smoke` | One read-only stop plan | Passed |
 | Dependency audit | `npm audit --audit-level=moderate` | No findings at threshold | Passed |
-| Container build | `docker build .` | Image builds as non-root runtime | Passed; health endpoint returned `ok` |
+| Fresh clone | Node 20 container: `npm ci`, lint, coverage, smoke | Clean committed source passes | Passed |
+| Container build | No-cache `docker build .` | Image builds as non-root runtime | Passed; health endpoint returned `ok` |
 | Terraform validation | `terraform validate` | Valid configuration | Passed via Terraform 1.14.3 container |
 
 ## Live provider acceptance matrix
