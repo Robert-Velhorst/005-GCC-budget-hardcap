@@ -1,22 +1,27 @@
 {
   "name": "gcc-budget-hardcap",
-  "version": "2.0.0",
-  "description": "Fail-safe Google Cloud budget automation for scoped Compute Engine instances.",
+  "version": "3.0.0",
+  "description": "Local and cloud control plane for fail-safe Google Cloud budget automation.",
   "main": "index.js",
   "type": "commonjs",
   "engines": {
-    "node": ">=20"
+    "node": ">=22 <25"
   },
   "scripts": {
     "start": "functions-framework --target=manageInstancesOnBudget --signature-type=cloudevent",
     "start:health": "functions-framework --target=healthCheck --signature-type=http --port=8081",
+    "start:control": "node src/control/main.js",
+    "dev": "vite --host 127.0.0.1",
+    "build:web": "vite build",
+    "preview:web": "vite preview --host 127.0.0.1",
     "lint": "node scripts/check-syntax.js",
     "test": "node --test",
     "test:coverage": "c8 --check-coverage --lines 85 --functions 80 --branches 75 node --test",
     "smoke": "node scripts/smoke.js",
     "doctor": "node scripts/doctor.js",
     "reconcile": "node scripts/reconcile.js",
-    "support:bundle": "node scripts/support-bundle.js"
+    "support:bundle": "node scripts/support-bundle.js",
+    "verify": "npm run lint && npm run test:coverage && npm run build:web && npm run smoke"
   },
   "keywords": [
     "google-cloud",
@@ -29,10 +34,19 @@
   "dependencies": {
     "@google-cloud/firestore": "8.7.1",
     "@google-cloud/functions-framework": "5.0.5",
-    "googleapis": "174.0.1"
+    "@modelcontextprotocol/sdk": "1.30.0",
+    "better-sqlite3": "13.0.1",
+    "google-auth-library": "10.5.0",
+    "googleapis": "174.0.1",
+    "lucide-react": "1.30.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "zod": "4.4.3"
   },
   "devDependencies": {
-    "c8": "12.0.0"
+    "@vitejs/plugin-react": "6.0.5",
+    "c8": "12.0.0",
+    "vite": "8.2.1"
   },
   "overrides": {
     "uuid": "11.1.1"

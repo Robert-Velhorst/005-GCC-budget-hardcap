@@ -1,0 +1,38 @@
+openapi: 3.1.0
+info:
+  title: GCC Budget Hardcap Operator API
+  version: 3.0.0
+  description: Read and review the budget hardcap control plane. HAI should use the MCP endpoint for bounded advisory context.
+servers:
+  - url: http://127.0.0.1:8787
+paths:
+  /healthz:
+    get:
+      operationId: getHealth
+      responses:
+        "200":
+          description: Process health
+  /api/v1/overview:
+    get:
+      operationId: getOverview
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Policy, budget observations, provider state, instances, and audit summary
+        "401":
+          description: Authentication required
+  /api/v1/policy:
+    get:
+      operationId: getPolicy
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Effective local policy
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque

@@ -1,6 +1,8 @@
 .git
 .github
 coverage
+web/dist
+.runtime
 docs
 node_modules
 .npm-cache

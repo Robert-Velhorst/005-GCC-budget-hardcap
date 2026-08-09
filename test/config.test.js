@@ -33,11 +33,21 @@ test("configuration rejects invalid booleans, numbers, and labels", () => {
   assert.throws(() => readConfig({ PROJECT_ID: "p", THRESHOLD_RATIO: "0" }));
   assert.throws(() => readConfig({ PROJECT_ID: "p", BUDGET_LIMIT: "0" }));
   assert.throws(() => readConfig({ PROJECT_ID: "p", MAX_ACTIONS_PER_EVENT: "1.5" }));
+  assert.throws(() => readConfig({ PROJECT_ID: "p", OPERATION_TIMEOUT_SECONDS: "5" }));
+  assert.throws(() => readConfig({ PROJECT_ID: "p", AUDIT_RETENTION_DAYS: "0" }));
   assert.throws(() => readConfig({ PROJECT_ID: "p", MANAGED_LABEL_KEY: "INVALID" }));
 });
 
-test("public configuration excludes persistence details", () => {
-  const value = publicConfig(readConfig({ PROJECT_ID: "project", FIRESTORE_PREFIX: "private" }));
+test("public configuration includes operator policy and excludes persistence details", () => {
+  const value = publicConfig(readConfig({
+    PROJECT_ID: "project",
+    BUDGET_LIMIT: "125",
+    THRESHOLD_RATIO: "0.8",
+    FIRESTORE_PREFIX: "private",
+  }));
   assert.equal(value.projectId, "project");
+  assert.equal(value.budgetLimit, 125);
+  assert.equal(value.thresholdRatio, 0.8);
+  assert.equal(value.auditRetentionDays, 90);
   assert.equal("firestorePrefix" in value, false);
 });

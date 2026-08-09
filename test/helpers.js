@@ -113,6 +113,17 @@ class MemoryStore {
     });
   }
 
+  async recordActionCompleted(actionId, record, now) {
+    const action = this.actions.find((item) => item.actionId === actionId);
+    Object.assign(action, record, { status: "COMPLETED" });
+    const existing = this.managed.get(record.instanceKey) || record;
+    this.managed.set(record.instanceKey, {
+      ...existing,
+      status: record.action === "stop" ? "STOP_COMPLETED" : "START_COMPLETED",
+      stopCompletedAt: record.action === "stop" ? now : existing.stopCompletedAt,
+    });
+  }
+
   async recordActionFailed(actionId, record) {
     const action = this.actions.find((item) => item.actionId === actionId);
     Object.assign(action, record, { status: "FAILED" });
@@ -120,7 +131,13 @@ class MemoryStore {
 
   async listRecoverableInstances(_projectId, cutoff) {
     return [...this.managed.values()].filter(
-      (record) => record.status === "STOP_SUBMITTED" && record.stopSubmittedAt <= cutoff,
+      (record) => record.status === "STOP_COMPLETED" && record.stopCompletedAt <= cutoff,
+    );
+  }
+
+  async listPendingActions(eventId) {
+    return this.actions.filter(
+      (record) => record.eventId === eventId && record.status === "SUBMITTED" && record.operationName,
     );
   }
 }

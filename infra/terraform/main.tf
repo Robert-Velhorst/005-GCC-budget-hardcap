@@ -77,6 +77,26 @@ resource "google_firestore_database" "default" {
   depends_on      = [google_project_service.required]
 }
 
+resource "google_firestore_field" "event_expiry" {
+  project    = var.project_id
+  database   = "(default)"
+  collection = "${var.firestore_prefix}_events"
+  field      = "expiresAt"
+
+  ttl_config {}
+  depends_on = [google_project_service.required]
+}
+
+resource "google_firestore_field" "action_expiry" {
+  project    = var.project_id
+  database   = "(default)"
+  collection = "${var.firestore_prefix}_actions"
+  field      = "expiresAt"
+
+  ttl_config {}
+  depends_on = [google_project_service.required]
+}
+
 resource "google_service_account" "function" {
   account_id   = "budget-hardcap-function"
   display_name = "Budget hardcap Cloud Function"
@@ -92,6 +112,7 @@ resource "google_project_iam_custom_role" "vm_operator" {
     "compute.instances.start",
     "compute.instances.stop",
     "compute.projects.get",
+    "compute.zoneOperations.get",
   ]
 }
 
@@ -125,7 +146,7 @@ resource "google_cloudfunctions2_function" "budget_hardcap" {
   location = var.region
 
   build_config {
-    runtime     = "nodejs20"
+    runtime     = "nodejs22"
     entry_point = "manageInstancesOnBudget"
     source {
       storage_source {
@@ -141,17 +162,22 @@ resource "google_cloudfunctions2_function" "budget_hardcap" {
     max_instance_count    = 3
     service_account_email = google_service_account.function.email
     environment_variables = {
-      PROJECT_ID                = var.project_id
-      EXECUTION_MODE            = var.execution_mode
-      AUTOMATION_ENABLED        = tostring(var.automation_enabled)
-      ENABLE_AUTOMATIC_RECOVERY = tostring(var.enable_automatic_recovery)
-      ALLOWED_BUDGET_NAMES      = join(",", var.allowed_budget_names)
-      EXPECTED_CURRENCY         = upper(var.expected_currency)
-      ALLOWED_ZONES             = join(",", var.allowed_zones)
-      BUDGET_LIMIT              = tostring(var.budget_limit)
-      THRESHOLD_RATIO           = tostring(var.threshold_ratio)
-      MAX_ACTIONS_PER_EVENT     = tostring(var.max_actions_per_event)
-      NOTIFICATION_TOPIC        = var.notification_topic_name
+      PROJECT_ID                  = var.project_id
+      EXECUTION_MODE              = var.execution_mode
+      AUTOMATION_ENABLED          = tostring(var.automation_enabled)
+      ENABLE_AUTOMATIC_RECOVERY   = tostring(var.enable_automatic_recovery)
+      ALLOWED_BUDGET_NAMES        = join(",", var.allowed_budget_names)
+      EXPECTED_CURRENCY           = upper(var.expected_currency)
+      ALLOWED_ZONES               = join(",", var.allowed_zones)
+      BUDGET_LIMIT                = tostring(var.budget_limit)
+      THRESHOLD_RATIO             = tostring(var.threshold_ratio)
+      MAX_ACTIONS_PER_EVENT       = tostring(var.max_actions_per_event)
+      OPERATION_TIMEOUT_SECONDS   = tostring(var.operation_timeout_seconds)
+      OPERATION_POLL_INTERVAL_MS  = tostring(var.operation_poll_interval_ms)
+      PROVIDER_REQUEST_TIMEOUT_MS = tostring(var.provider_request_timeout_ms)
+      FIRESTORE_PREFIX            = var.firestore_prefix
+      AUDIT_RETENTION_DAYS        = tostring(var.audit_retention_days)
+      NOTIFICATION_TOPIC          = var.notification_topic_name
     }
   }
 
@@ -175,7 +201,7 @@ resource "google_cloudfunctions2_function" "health" {
   location = var.region
 
   build_config {
-    runtime     = "nodejs20"
+    runtime     = "nodejs22"
     entry_point = "healthCheck"
     source {
       storage_source {
@@ -192,16 +218,21 @@ resource "google_cloudfunctions2_function" "health" {
     ingress_settings      = "ALLOW_ALL"
     service_account_email = google_service_account.function.email
     environment_variables = {
-      PROJECT_ID                = var.project_id
-      EXECUTION_MODE            = var.execution_mode
-      AUTOMATION_ENABLED        = tostring(var.automation_enabled)
-      ENABLE_AUTOMATIC_RECOVERY = tostring(var.enable_automatic_recovery)
-      ALLOWED_BUDGET_NAMES      = join(",", var.allowed_budget_names)
-      EXPECTED_CURRENCY         = upper(var.expected_currency)
-      ALLOWED_ZONES             = join(",", var.allowed_zones)
-      BUDGET_LIMIT              = tostring(var.budget_limit)
-      THRESHOLD_RATIO           = tostring(var.threshold_ratio)
-      MAX_ACTIONS_PER_EVENT     = tostring(var.max_actions_per_event)
+      PROJECT_ID                  = var.project_id
+      EXECUTION_MODE              = var.execution_mode
+      AUTOMATION_ENABLED          = tostring(var.automation_enabled)
+      ENABLE_AUTOMATIC_RECOVERY   = tostring(var.enable_automatic_recovery)
+      ALLOWED_BUDGET_NAMES        = join(",", var.allowed_budget_names)
+      EXPECTED_CURRENCY           = upper(var.expected_currency)
+      ALLOWED_ZONES               = join(",", var.allowed_zones)
+      BUDGET_LIMIT                = tostring(var.budget_limit)
+      THRESHOLD_RATIO             = tostring(var.threshold_ratio)
+      MAX_ACTIONS_PER_EVENT       = tostring(var.max_actions_per_event)
+      OPERATION_TIMEOUT_SECONDS   = tostring(var.operation_timeout_seconds)
+      OPERATION_POLL_INTERVAL_MS  = tostring(var.operation_poll_interval_ms)
+      PROVIDER_REQUEST_TIMEOUT_MS = tostring(var.provider_request_timeout_ms)
+      FIRESTORE_PREFIX            = var.firestore_prefix
+      AUDIT_RETENTION_DAYS        = tostring(var.audit_retention_days)
     }
   }
 

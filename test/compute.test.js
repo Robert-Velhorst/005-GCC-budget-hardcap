@@ -97,3 +97,81 @@ test("Compute gateway wraps provider failures and classifies retryability", asyn
     (error) => error instanceof ProviderError && error.retryable === true,
   );
 });
+
+test("Compute gateway polls zone operations to terminal success", async () => {
+  const responses = [
+    { data: { name: "op-1", status: "RUNNING" } },
+    { data: { id: "9", name: "op-1", status: "DONE" } },
+  ];
+  let currentTime = 0;
+  const google = {
+    auth: { GoogleAuth: class {} },
+    compute: () => ({
+      instances: {},
+      projects: {},
+      zoneOperations: { get: async () => responses.shift() },
+    }),
+  };
+  const gateway = createComputeGateway(config(), () => google);
+  const result = await gateway.waitForOperation("op-1", "europe-west4-a", {
+    timeoutMs: 1000,
+    pollIntervalMs: 10,
+    now: () => new Date(currentTime),
+    sleep: async (milliseconds) => { currentTime += milliseconds; },
+  });
+  assert.deepEqual(result, {
+    operationId: "9",
+    operationName: "op-1",
+    operationStatus: "DONE",
+  });
+});
+
+test("Compute gateway classifies terminal operation errors as non-retryable", async () => {
+  const google = {
+    auth: { GoogleAuth: class {} },
+    compute: () => ({
+      instances: {},
+      projects: {},
+      zoneOperations: {
+        get: async () => ({
+          data: {
+            name: "op-failed",
+            status: "DONE",
+            error: { errors: [{ code: "PERMISSION_DENIED", message: "denied" }] },
+          },
+        }),
+      },
+    }),
+  };
+  const gateway = createComputeGateway(config(), () => google);
+  await assert.rejects(
+    () => gateway.waitForOperation("op-failed", "europe-west4-a"),
+    (error) => error instanceof ProviderError && !error.retryable && error.details.terminal,
+  );
+});
+
+test("Compute gateway times out pending operations as retryable", async () => {
+  let currentTime = 0;
+  const google = {
+    auth: { GoogleAuth: class {} },
+    compute: () => ({
+      instances: {},
+      projects: {},
+      zoneOperations: { get: async () => ({ data: { status: "RUNNING" } }) },
+    }),
+  };
+  const gateway = createComputeGateway(config(), () => google);
+  await assert.rejects(
+    () => gateway.waitForOperation("op-slow", "europe-west4-a", {
+      timeoutMs: 10,
+      pollIntervalMs: 10,
+      now: () => new Date(currentTime),
+      sleep: async (milliseconds) => { currentTime += milliseconds; },
+    }),
+    (error) => error instanceof ProviderError && error.retryable,
+  );
+  await assert.rejects(
+    () => gateway.waitForOperation(null, "europe-west4-a"),
+    (error) => error instanceof ProviderError && !error.retryable,
+  );
+});

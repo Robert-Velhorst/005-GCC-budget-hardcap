@@ -16,3 +16,14 @@ Reviewed the three-file repository, replaced hard-coded project/threshold behavi
 - Added required technical audit, critical path, acceptance, security, runbook, API/UI audit, task graph, checkpoint, matrix, and verification documents.
 
 External work remaining: initialize/deploy Terraform in the operator account and execute the live acceptance matrix with an approved disposable VM.
+
+## 2026-08-09 - Windows operator control plane
+
+- Added React/Vite dashboard, native authenticated API, SQLite WAL/migrations/retention, cached provider status, and request deadlines.
+- Added Windows setup/local/ngrok scripts with restricted generated tokens, port ownership checks, and child-aware health startup.
+- Added separate HAI bearer authority and real read-only MCP Streamable HTTP tools.
+- Split control-plane and function container images, added Compose, and upgraded CI/Terraform runtimes to Node 22.
+- Fixed defects found by execution: missing policy fields causing `NaN`, PowerShell 5.1 token API incompatibility, indefinite provider probes, wrong-process tunnel startup, and missing native SQLite container toolchain.
+- Passed 58 tests, coverage, production web build, smoke, audit, Terraform, Compose, Windows launcher, and desktop/mobile browser QA.
+
+External work remaining: live Google Cloud disposable-VM acceptance, owner resolution of ngrok `ERR_NGROK_334`, and a final image build/run when concurrent Docker workload is clear.

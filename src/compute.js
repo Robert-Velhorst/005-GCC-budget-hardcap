@@ -16,12 +16,15 @@ function createComputeGateway(config, googleFactory = defaultGoogleFactory) {
       do {
         let response;
         try {
-          response = await compute.instances.aggregatedList({
-            project: config.projectId,
-            auth,
-            pageToken,
-            maxResults: 500,
-          });
+          response = await compute.instances.aggregatedList(
+            {
+              project: config.projectId,
+              auth,
+              pageToken,
+              maxResults: 500,
+            },
+            requestOptions(config),
+          );
         } catch (error) {
           throw providerError("Failed to list Compute Engine instances.", error);
         }
@@ -49,13 +52,16 @@ function createComputeGateway(config, googleFactory = defaultGoogleFactory) {
         throw new TypeError(`Unsupported Compute Engine action: ${action}`);
       }
       try {
-        const response = await compute.instances[action]({
-          project: config.projectId,
-          zone: instance.zone,
-          instance: instance.name,
-          auth,
-          requestId: instance.requestId,
-        });
+        const response = await compute.instances[action](
+          {
+            project: config.projectId,
+            zone: instance.zone,
+            instance: instance.name,
+            auth,
+            requestId: instance.requestId,
+          },
+          requestOptions(config),
+        );
         return {
           operationId: String(response.data.id || ""),
           operationName: response.data.name || null,
@@ -66,9 +72,61 @@ function createComputeGateway(config, googleFactory = defaultGoogleFactory) {
       }
     },
 
+    async waitForOperation(operationName, zone, options = {}) {
+      if (!operationName) {
+        throw new ProviderError("Compute Engine returned no operation name.", { retryable: false });
+      }
+
+      const timeoutMs = options.timeoutMs ?? config.operationTimeoutSeconds * 1000;
+      const pollIntervalMs = options.pollIntervalMs ?? config.operationPollIntervalMs;
+      const sleep = options.sleep || defaultSleep;
+      const now = options.now || (() => new Date());
+      const deadline = now().getTime() + timeoutMs;
+
+      while (true) {
+        let response;
+        try {
+          response = await compute.zoneOperations.get(
+            {
+              project: config.projectId,
+              zone,
+              operation: operationName,
+              auth,
+            },
+            requestOptions(config),
+          );
+        } catch (error) {
+          throw providerError(`Failed to read Compute Engine operation ${operationName}.`, error);
+        }
+
+        if (response.data.status === "DONE") {
+          const operationErrors = response.data.error?.errors || [];
+          if (operationErrors.length > 0) {
+            throw operationFailure(operationName, operationErrors);
+          }
+          return {
+            operationId: String(response.data.id || ""),
+            operationName: response.data.name || operationName,
+            operationStatus: "DONE",
+          };
+        }
+
+        if (now().getTime() >= deadline) {
+          throw new ProviderError(`Compute Engine operation ${operationName} did not finish in time.`, {
+            retryable: true,
+            details: { operationName, zone, timeoutMs },
+          });
+        }
+        await sleep(pollIntervalMs);
+      }
+    },
+
     async getProject() {
       try {
-        const response = await compute.projects.get({ project: config.projectId, auth });
+        const response = await compute.projects.get(
+          { project: config.projectId, auth },
+          requestOptions(config),
+        );
         return { id: String(response.data.id || ""), name: response.data.name };
       } catch (error) {
         throw providerError("Failed to verify Compute Engine project access.", error);
@@ -93,7 +151,9 @@ function instanceKey(instance) {
 }
 
 function defaultGoogleFactory() {
-  return require("googleapis").google;
+  const { GoogleAuth } = require("google-auth-library");
+  const { compute } = require("googleapis/build/src/apis/compute");
+  return { auth: { GoogleAuth }, compute };
 }
 
 function providerError(message, error) {
@@ -103,6 +163,25 @@ function providerError(message, error) {
     retryable,
     details: { status: Number.isFinite(status) ? status : undefined, cause: error.message },
   });
+}
+
+function operationFailure(operationName, errors) {
+  return new ProviderError(`Compute Engine operation ${operationName} failed.`, {
+    retryable: false,
+    details: {
+      operationName,
+      terminal: true,
+      errors: errors.map((error) => ({ code: error.code, message: error.message })),
+    },
+  });
+}
+
+function defaultSleep(milliseconds) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+function requestOptions(config) {
+  return { timeout: config.providerRequestTimeoutMs };
 }
 
 module.exports = { createComputeGateway, instanceKey, selectManagedInstances };

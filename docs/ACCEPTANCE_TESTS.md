@@ -5,13 +5,17 @@
 | Scenario | Command | Expected | Current result |
 | --- | --- | --- | --- |
 | Syntax | `npm run lint` | All JavaScript parses | Passed |
-| Unit/integration | `npm test` | All tests pass | Passed, 36 tests |
-| Coverage | `npm run test:coverage` | >=85 lines, >=80 functions, >=75 branches | Node 20 passed: 96.63 / 93.58 / 84.90 |
+| Unit/integration | `npm test` | All tests pass | Passed, 58 tests |
+| Coverage | `npm run test:coverage` | >=85 lines, >=80 functions, >=75 branches | Passed: 89.31 / 86.63 / 80.61 |
 | Test-only critical path | `npm run smoke` | One read-only stop plan | Passed |
+| Web production build | `npm run build:web` | Production assets compile | Passed |
+| Browser workflow | Playwright desktop/mobile | No errors/overflow; policy API persists | Passed |
+| Windows setup/launch | PowerShell 5.1 with Node 24 | Restricted secrets and healthy loopback app | Passed |
+| MCP connector | Protocol initialize/list/call | Separate HAI bearer and read-only tools | Passed |
 | Dependency audit | `npm audit --audit-level=moderate` | No findings at threshold | Passed |
-| Fresh clone | Node 20 container: `npm ci`, lint, coverage, smoke | Clean committed source passes | Passed |
-| Container build | No-cache `docker build .` | Image builds as non-root runtime | Passed; health endpoint returned `ok` |
-| Terraform validation | `terraform validate` | Valid configuration | Passed via Terraform 1.14.3 container |
+| Container build | `docker build .` | Native SQLite compiles and image runs non-root | Tooling defect fixed; final build timed out under concurrent Docker load |
+| Compose configuration | `docker compose config --quiet` | Configuration resolves on Windows | Passed |
+| Terraform validation | `terraform validate` | Valid configuration | Passed with Terraform 1.14.3 |
 
 ## Live provider acceptance matrix
 
@@ -39,3 +43,5 @@ These tests are intentionally not marked complete without the operator's Google 
 ## Human readiness sign-off
 
 Sign-off must record project, region, function revision, test VM, budget/topic, timestamps, log query, Firestore document IDs, Compute operation IDs, approver, and rollback confirmation. Do not place credentials or sensitive raw logs in the repository.
+
+Ngrok acceptance additionally requires the owning account to stop its already-online assigned endpoint (`ERR_NGROK_334` observed), then verify public login, secure cookie, authenticated overview, and teardown. Pooling is not an acceptable workaround because it may route to another local service.

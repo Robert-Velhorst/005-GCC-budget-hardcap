@@ -11,7 +11,7 @@ const { DECISIONS, evaluateBudgetPolicy } = require("./policy");
 const { createFirestoreStore } = require("./store");
 
 function createBudgetHandler(dependencies = {}) {
-  return async function manageInstancesOnBudget(event, context = {}) {
+  const runBudgetWorkflow = async function runBudgetWorkflow(event, context = {}) {
     const now = dependencies.now ? dependencies.now() : new Date();
     const config = dependencies.config || readConfig();
     const budgetEvent = parseBudgetEvent(event, context, now);
@@ -78,10 +78,17 @@ function createBudgetHandler(dependencies = {}) {
         return result;
       }
 
-      const actionPlan = await buildActionPlan({ compute, store, config, policy, now });
+      const actionPlan = await buildActionPlan({
+        budgetEvent,
+        compute,
+        store,
+        config,
+        policy,
+        now,
+      });
       enforceActionLimit(actionPlan, config);
 
-      const submitted = await executeActions({
+      const completed = await executeActions({
         actionPlan,
         budgetEvent,
         compute,
@@ -92,7 +99,7 @@ function createBudgetHandler(dependencies = {}) {
         nowProvider: dependencies.now || (() => new Date()),
       });
 
-      const result = summary("COMPLETED", policy, submitted);
+      const result = summary("COMPLETED", policy, completed);
       await store.updateControlState(
         config.projectId,
         { lastDecision: policy.decision, lastActionAt: now, lastEventId: budgetEvent.eventId },
@@ -133,6 +140,30 @@ function createBudgetHandler(dependencies = {}) {
       throw normalized;
     }
   };
+
+  return async function manageInstancesOnBudget(event, context = {}) {
+    try {
+      return await runBudgetWorkflow(event, context);
+    } catch (error) {
+      const normalized = normalizeError(error);
+      if (normalized.retryable) throw normalized;
+
+      const logger = dependencies.logger || createLogger();
+      logger.error("Non-retryable event acknowledged without provider retry.", {
+        code: normalized.code,
+        error: normalized.message,
+        retryable: false,
+      });
+      return {
+        status: "REJECTED_NON_RETRYABLE",
+        code: normalized.code,
+        reason: normalized.message,
+        retryable: false,
+        actionCount: 0,
+        actions: [],
+      };
+    }
+  };
 }
 
 async function executePlan({ budgetEvent, compute, config, logger, policy }) {
@@ -160,7 +191,22 @@ async function executePlan({ budgetEvent, compute, config, logger, policy }) {
   return result;
 }
 
-async function buildActionPlan({ compute, store, config, policy, now }) {
+async function buildActionPlan({ budgetEvent, compute, store, config, policy, now }) {
+  const pendingActions = await store.listPendingActions(budgetEvent.eventId);
+  if (pendingActions.length > 0) {
+    return pendingActions.map((record) => ({
+      action: record.action,
+      actionId: record.actionId,
+      operationName: record.operationName,
+      requestId: record.requestId,
+      resumeOperation: true,
+      instance: {
+        name: record.instanceName,
+        zone: record.zone,
+      },
+    }));
+  }
+
   const instances = await compute.listInstances();
   if (policy.decision === DECISIONS.STOP) {
     return selectManagedInstances(instances, config, "RUNNING").map((instance) => ({
@@ -187,11 +233,13 @@ async function executeActions({
   sleep,
   nowProvider,
 }) {
-  const submitted = [];
+  const completed = [];
   for (let index = 0; index < actionPlan.length; index += 1) {
-    const { action, instance } = actionPlan[index];
+    const plannedAction = actionPlan[index];
+    const { action, instance } = plannedAction;
     const key = instanceKey(instance);
-    const requestId = deterministicRequestId(`${budgetEvent.eventId}:${action}:${key}`);
+    const requestId =
+      plannedAction.requestId || deterministicRequestId(`${budgetEvent.eventId}:${action}:${key}`);
     const actionRecord = {
       eventId: budgetEvent.eventId,
       projectId: config.projectId,
@@ -202,32 +250,80 @@ async function executeActions({
       requestId,
     };
 
-    const intentAt = nowProvider();
-    const actionId = await store.recordActionIntent(actionRecord, intentAt);
-    logger.info("Action intent persisted.", { actionId, action, instance: instance.name, zone: instance.zone });
+    let actionId = plannedAction.actionId;
+    let operation = plannedAction.resumeOperation
+      ? { operationName: plannedAction.operationName, operationStatus: "PENDING" }
+      : null;
 
     try {
-      const operation = await compute.submitAction(action, { ...instance, requestId });
-      const submittedAt = nowProvider();
-      await store.recordActionSubmitted(
+      if (!plannedAction.resumeOperation) {
+        const intentAt = nowProvider();
+        actionId = await store.recordActionIntent(actionRecord, intentAt);
+        logger.info("Action intent persisted.", {
+          actionId,
+          action,
+          instance: instance.name,
+          zone: instance.zone,
+        });
+
+        operation = await compute.submitAction(action, { ...instance, requestId });
+        const submittedAt = nowProvider();
+        await store.recordActionSubmitted(
+          actionId,
+          { ...actionRecord, ...operation },
+          submittedAt,
+        );
+        logger.info("Compute Engine action submitted and audited.", {
+          ...publicAction(action, instance),
+          ...operation,
+          status: "SUBMITTED",
+        });
+      } else {
+        logger.info("Resuming a previously submitted Compute Engine operation.", {
+          actionId,
+          action,
+          instance: instance.name,
+          zone: instance.zone,
+          operationName: operation.operationName,
+        });
+      }
+
+      const terminalOperation = await compute.waitForOperation(operation.operationName, instance.zone, {
+        timeoutMs: config.operationTimeoutSeconds * 1000,
+        pollIntervalMs: config.operationPollIntervalMs,
+        sleep,
+        now: nowProvider,
+      });
+      const completedAt = nowProvider();
+      await store.recordActionCompleted(
         actionId,
-        { ...actionRecord, ...operation },
-        submittedAt,
+        { ...actionRecord, ...operation, ...terminalOperation },
+        completedAt,
       );
-      const result = { ...publicAction(action, instance), ...operation, status: "SUBMITTED" };
-      submitted.push(result);
-      logger.info("Compute Engine action submitted and audited.", result);
+      const result = {
+        ...publicAction(action, instance),
+        ...operation,
+        ...terminalOperation,
+        status: "COMPLETED",
+      };
+      completed.push(result);
+      logger.info("Compute Engine action reached terminal success and was audited.", result);
     } catch (error) {
       const normalized = normalizeError(error);
-      await store.recordActionFailed(
-        actionId,
-        {
-          errorCode: normalized.code,
-          errorMessage: normalized.message,
-          retryable: normalized.retryable,
-        },
-        nowProvider(),
-      );
+      const terminalFailure = normalized.details?.terminal === true;
+      if (!operation || terminalFailure || !normalized.retryable) {
+        await store.recordActionFailed(
+          actionId,
+          {
+            action,
+            instanceKey: key,
+            errorCode: normalized.code,
+            errorMessage: normalized.message,
+            retryable: normalized.retryable,
+          },
+          nowProvider(),
+        );
+      }
       throw normalized;
     }
 
@@ -235,7 +331,7 @@ async function executeActions({
       await sleep(config.actionDelayMs);
     }
   }
-  return submitted;
+  return completed;
 }
 
 async function checkCooldown(store, config, policy, now) {

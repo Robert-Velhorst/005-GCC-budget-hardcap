@@ -16,11 +16,13 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
       - run: npm ci
       - run: npm run lint
       - run: npm run test:coverage
+      - run: npm run build:web
       - run: npm run smoke
       - run: npm audit --audit-level=moderate
       - run: docker build --tag gcc-budget-hardcap:ci .
+      - run: docker build --file Dockerfile.function --tag gcc-budget-hardcap-function:ci .

@@ -1,0 +1,21 @@
+{
+  "id": "gcc-budget-hardcap",
+  "name": "GCC Budget Hardcap",
+  "protocol": "mcp-streamable-http",
+  "url": "http://host.docker.internal:8787/mcp",
+  "authentication": {
+    "type": "bearer",
+    "tokenEnvironmentVariable": "HAI_CONNECTOR_TOKEN"
+  },
+  "authority": "read_only_advisory",
+  "tools": [
+    "get_budget_hardcap_status",
+    "list_budget_hardcap_incidents"
+  ],
+  "restrictions": [
+    "no Compute Engine mutation",
+    "no policy mutation",
+    "no credentials or raw provider responses",
+    "no process, filesystem, browser, email, or messaging access"
+  ]
+}

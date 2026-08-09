@@ -11,14 +11,23 @@ Trust comes from authenticated Eventarc delivery to the deployed function plus e
 - `instances.aggregatedList`: inventory and current state.
 - `instances.stop`: scoped stop request.
 - `instances.start`: audit-backed recovery request.
+- `zoneOperations.get`: terminal action verification and retry resumption.
 - `projects.get`: optional doctor credential check.
 
-No delete, reset, disk, network, image, or IAM mutation API is used. Long-running operation acceptance is recorded as `SUBMITTED`; the code does not claim the VM reached the target state synchronously.
+No delete, reset, disk, network, image, or IAM mutation API is used. Provider acceptance is recorded as `SUBMITTED`, then the zone operation is polled. Only a successful `DONE` operation becomes `COMPLETED`; timeout remains resumable and terminal provider errors become audited failures.
 
 ## Firestore API
 
-Collections use the configured prefix and store event claims, action intents/outcomes, managed-instance recovery ownership, and cooldown control state. No personal data, credentials, message raw payloads, or access tokens are stored.
+Collections use the configured prefix and store event claims, action intents/outcomes, managed-instance recovery ownership, and cooldown control state. Terraform enables TTL on event/action `expiresAt` fields. No personal data, credentials, message raw payloads, or access tokens are stored.
 
 ## Pub/Sub publish API
 
 Used only when `NOTIFICATION_TOPIC` is configured. Notification failure is logged but does not turn an already-submitted Compute action into a retry loop.
+
+## Local operator API
+
+The native HTTP control plane exposes health/readiness, session, overview, policy, and plan-only preview routes. Policy mutation writes only local SQLite settings and never deploys Terraform or directly mutates Compute Engine. Static paths are resolved under the built web root, request bodies are capped, and security headers are applied globally.
+
+## HAI MCP
+
+`/mcp` implements authenticated MCP Streamable HTTP sessions with a bounded session count. The only tools return a compact status summary and recent failure records. No MCP tool can change policy, call Compute mutations, access credentials, or invoke generic process/filesystem/browser capabilities.

@@ -37,6 +37,15 @@ test("Firestore store enforces event claims and records the action lifecycle", a
     ...action,
     operationName: "operation-1",
   }, now);
+  assert.equal((await store.listPendingActions("event-1")).length, 1);
+  assert.equal((await store.listRecoverableInstances("test-project", now)).length, 0);
+  assert.equal((await store.listAmbiguousInstances("test-project")).length, 1);
+  await store.recordActionCompleted(actionId, {
+    ...action,
+    operationName: "operation-1",
+    operationStatus: "DONE",
+  }, now);
+  assert.equal((await store.listPendingActions("event-1")).length, 0);
   assert.equal((await store.listRecoverableInstances("test-project", now)).length, 1);
   assert.equal((await store.listAmbiguousInstances("test-project")).length, 0);
 
@@ -49,10 +58,17 @@ test("Firestore store enforces event claims and records the action lifecycle", a
   await store.ignoreEvent("event-3", { reason: "cooldown" }, now);
   await store.failEvent("event-4", new ProviderError("failed", { retryable: true }), now);
   await store.recordActionFailed(actionId, {
+    action: "stop",
+    instanceKey: "europe-west4-a/vm-1",
     retryable: false,
     errorCode: "FAILED",
     errorMessage: "failed",
   }, now);
+
+  const eventDocuments = firestore._collections.get("budgetHardcap_events");
+  const actionDocuments = firestore._collections.get("budgetHardcap_actions");
+  assert.ok([...eventDocuments.values()][0].expiresAt instanceof Date);
+  assert.ok([...actionDocuments.values()][0].expiresAt instanceof Date);
 });
 
 test("Firestore store wraps persistence failures as retryable provider errors", async () => {
@@ -99,6 +115,7 @@ function fakeFirestore() {
   }
 
   return {
+    _collections: collections,
     collection,
     async runTransaction(callback) {
       return callback({

@@ -67,6 +67,48 @@ variable "max_actions_per_event" {
   default = 20
 }
 
+variable "operation_timeout_seconds" {
+  description = "Maximum time an invocation waits for each Compute operation."
+  type        = number
+  default     = 180
+  validation {
+    condition     = var.operation_timeout_seconds >= 10 && var.operation_timeout_seconds <= 480
+    error_message = "operation_timeout_seconds must be between 10 and 480."
+  }
+}
+
+variable "operation_poll_interval_ms" {
+  description = "Delay between Compute operation status checks."
+  type        = number
+  default     = 2000
+}
+
+variable "provider_request_timeout_ms" {
+  description = "Per-request timeout for Google provider API calls."
+  type        = number
+  default     = 8000
+  validation {
+    condition     = var.provider_request_timeout_ms >= 1000 && var.provider_request_timeout_ms <= 60000
+    error_message = "provider_request_timeout_ms must be between 1000 and 60000."
+  }
+}
+
+variable "firestore_prefix" {
+  description = "Prefix used for Firestore audit and control collections."
+  type        = string
+  default     = "budgetHardcap"
+}
+
+variable "audit_retention_days" {
+  description = "TTL for event and action audit records."
+  type        = number
+  default     = 90
+  validation {
+    condition     = var.audit_retention_days >= 1 && var.audit_retention_days <= 3650
+    error_message = "audit_retention_days must be between 1 and 3650."
+  }
+}
+
 variable "notification_topic_name" {
   description = "Optional existing topic for operator outcome notifications."
   type        = string

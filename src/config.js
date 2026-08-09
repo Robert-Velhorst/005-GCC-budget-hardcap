@@ -40,6 +40,24 @@ function readConfig(env = process.env) {
       min: 0,
       max: 60000,
     }),
+    operationTimeoutSeconds: parseInteger(
+      env.OPERATION_TIMEOUT_SECONDS,
+      180,
+      "OPERATION_TIMEOUT_SECONDS",
+      { min: 10, max: 480 },
+    ),
+    operationPollIntervalMs: parseInteger(
+      env.OPERATION_POLL_INTERVAL_MS,
+      2000,
+      "OPERATION_POLL_INTERVAL_MS",
+      { min: 250, max: 30000 },
+    ),
+    providerRequestTimeoutMs: parseInteger(
+      env.PROVIDER_REQUEST_TIMEOUT_MS,
+      8000,
+      "PROVIDER_REQUEST_TIMEOUT_MS",
+      { min: 1000, max: 60000 },
+    ),
     cooldownSeconds: parseInteger(env.COOLDOWN_SECONDS, 300, "COOLDOWN_SECONDS", {
       min: 0,
       max: 86400,
@@ -62,6 +80,10 @@ function readConfig(env = process.env) {
     }),
     firestoreDatabaseId: optionalString(env.FIRESTORE_DATABASE_ID) || "(default)",
     firestorePrefix: optionalString(env.FIRESTORE_PREFIX) || "budgetHardcap",
+    auditRetentionDays: parseInteger(env.AUDIT_RETENTION_DAYS, 90, "AUDIT_RETENTION_DAYS", {
+      min: 1,
+      max: 3650,
+    }),
     notificationTopic: optionalString(env.NOTIFICATION_TOPIC),
   };
 
@@ -148,12 +170,17 @@ function publicConfig(config) {
     executionMode: config.executionMode,
     automationEnabled: config.automationEnabled,
     enableAutomaticRecovery: config.enableAutomaticRecovery,
+    budgetLimit: config.budgetLimit,
+    thresholdRatio: config.thresholdRatio,
     expectedCurrency: config.expectedCurrency || null,
     allowedBudgetNames: config.allowedBudgetNames,
     allowedZones: config.allowedZones,
     maxActionsPerEvent: config.maxActionsPerEvent,
+    operationTimeoutSeconds: config.operationTimeoutSeconds,
+    providerRequestTimeoutMs: config.providerRequestTimeoutMs,
     cooldownSeconds: config.cooldownSeconds,
     recoveryDelaySeconds: config.recoveryDelaySeconds,
+    auditRetentionDays: config.auditRetentionDays,
     notificationEnabled: Boolean(config.notificationTopic),
   };
 }

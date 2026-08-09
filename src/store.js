@@ -34,6 +34,7 @@ function createFirestoreStore(config, firestoreFactory = defaultFirestoreFactory
             startedAt: now,
             updatedAt: now,
             leaseUntil: new Date(now.getTime() + config.eventLeaseSeconds * 1000),
+            expiresAt: retentionExpiry(config, now),
           },
           { merge: true },
         );
@@ -81,7 +82,14 @@ function createFirestoreStore(config, firestoreFactory = defaultFirestoreFactory
     async recordActionIntent(record, now) {
       const actionId = safeDocumentId(`${record.eventId}:${record.action}:${record.instanceKey}`);
       await actions.doc(actionId).set(
-        { ...record, actionId, status: "INTENT_RECORDED", createdAt: now, updatedAt: now },
+        {
+          ...record,
+          actionId,
+          status: "INTENT_RECORDED",
+          createdAt: now,
+          updatedAt: now,
+          expiresAt: retentionExpiry(config, now),
+        },
         { merge: true },
       );
       if (record.action === "stop") {
@@ -120,6 +128,25 @@ function createFirestoreStore(config, firestoreFactory = defaultFirestoreFactory
       }
     },
 
+    async recordActionCompleted(actionId, record, now) {
+      await actions.doc(actionId).set(
+        { ...record, status: "COMPLETED", completedAt: now, updatedAt: now },
+        { merge: true },
+      );
+      const managedRef = managed.doc(safeDocumentId(record.instanceKey));
+      if (record.action === "stop") {
+        await managedRef.set(
+          { status: "STOP_COMPLETED", stopCompletedAt: now, operationName: record.operationName },
+          { merge: true },
+        );
+      } else {
+        await managedRef.set(
+          { status: "START_COMPLETED", startCompletedAt: now, operationName: record.operationName },
+          { merge: true },
+        );
+      }
+    },
+
     async recordActionFailed(actionId, record, now) {
       await actions.doc(actionId).set(
         {
@@ -131,6 +158,24 @@ function createFirestoreStore(config, firestoreFactory = defaultFirestoreFactory
         },
         { merge: true },
       );
+      if (record.action && record.instanceKey) {
+        await managed.doc(safeDocumentId(record.instanceKey)).set(
+          {
+            status: `${record.action.toUpperCase()}_FAILED`,
+            errorCode: record.errorCode,
+            errorMessage: record.errorMessage,
+            updatedAt: now,
+          },
+          { merge: true },
+        );
+      }
+    },
+
+    async listPendingActions(eventId) {
+      const snapshot = await actions.where("eventId", "==", eventId).get();
+      return snapshot.docs
+        .map((document) => document.data())
+        .filter((record) => record.status === "SUBMITTED" && record.operationName);
     },
 
     async listRecoverableInstances(projectId, cutoff) {
@@ -138,8 +183,8 @@ function createFirestoreStore(config, firestoreFactory = defaultFirestoreFactory
       return snapshot.docs
         .map((document) => document.data())
         .filter((record) => {
-          const stoppedAt = record.stopSubmittedAt?.toDate?.() || record.stopSubmittedAt;
-          return record.status === "STOP_SUBMITTED" && stoppedAt && new Date(stoppedAt) <= cutoff;
+          const stoppedAt = record.stopCompletedAt?.toDate?.() || record.stopCompletedAt;
+          return record.status === "STOP_COMPLETED" && stoppedAt && new Date(stoppedAt) <= cutoff;
         });
     },
 
@@ -147,7 +192,7 @@ function createFirestoreStore(config, firestoreFactory = defaultFirestoreFactory
       const snapshot = await managed.where("projectId", "==", projectId).get();
       return snapshot.docs
         .map((document) => document.data())
-        .filter((record) => record.status === "STOP_INTENT");
+        .filter((record) => ["STOP_INTENT", "STOP_SUBMITTED", "START_SUBMITTED"].includes(record.status));
     },
 
     async markManagedInstance(instanceKeyValue, state, now) {
@@ -161,6 +206,10 @@ function createFirestoreStore(config, firestoreFactory = defaultFirestoreFactory
 
 function safeDocumentId(value) {
   return crypto.createHash("sha256").update(String(value)).digest("hex");
+}
+
+function retentionExpiry(config, now) {
+  return new Date(now.getTime() + config.auditRetentionDays * 24 * 60 * 60 * 1000);
 }
 
 function defaultFirestoreFactory(config) {

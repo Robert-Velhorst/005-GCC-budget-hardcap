@@ -18,11 +18,7 @@ async function main() {
 
   for (const record of ambiguous) {
     const current = currentByKey.get(record.instanceKey);
-    const reconciledState = current?.status === "TERMINATED"
-      ? "STOP_SUBMITTED"
-      : current?.status === "RUNNING"
-        ? "STOP_FAILED_NO_CHANGE"
-        : "MANUAL_REVIEW_REQUIRED";
+    const reconciledState = reconcileState(record.status, current?.status);
     if (apply) await store.markManagedInstance(record.instanceKey, reconciledState, new Date());
     results.push({
       instanceKey: record.instanceKey,
@@ -33,6 +29,18 @@ async function main() {
   }
 
   console.log(JSON.stringify({ mode: apply ? "apply" : "dry-run", count: results.length, results }, null, 2));
+}
+
+function reconcileState(auditStatus, computeStatus) {
+  if (auditStatus.startsWith("STOP_")) {
+    if (computeStatus === "TERMINATED") return "STOP_COMPLETED";
+    if (computeStatus === "RUNNING") return "STOP_FAILED_NO_CHANGE";
+  }
+  if (auditStatus === "START_SUBMITTED") {
+    if (computeStatus === "RUNNING") return "START_COMPLETED";
+    if (computeStatus === "TERMINATED") return "START_FAILED_NO_CHANGE";
+  }
+  return "MANUAL_REVIEW_REQUIRED";
 }
 
 main().catch((error) => {

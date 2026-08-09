@@ -3,6 +3,8 @@ region               = "europe-west4"
 allowed_budget_names = ["Production hardcap"]
 expected_currency    = "EUR"
 allowed_zones        = ["europe-west4-a", "europe-west4-b"]
+audit_retention_days = 90
+provider_request_timeout_ms = 8000
 
 # First deployment must remain read-only.
 execution_mode    = "plan"

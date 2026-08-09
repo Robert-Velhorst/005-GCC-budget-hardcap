@@ -2,7 +2,7 @@
 
 ## Assets and trust boundaries
 
-The protected assets are Compute Engine availability, billing-control integrity, Firestore audit history, and the function service account. Trust boundaries are Eventarc/Pub/Sub delivery, budget payload parsing, runtime configuration, Google credentials, Firestore, and Compute Engine.
+The protected assets are Compute Engine availability, billing-control integrity, Firestore and SQLite audit history, operator/HAI tokens, and the function service account. Trust boundaries are Eventarc/Pub/Sub delivery, budget payload parsing, runtime configuration, the local/public HTTP boundary, HAI MCP, Google credentials, Firestore, SQLite, and Compute Engine.
 
 ## Threats and controls
 
@@ -17,11 +17,15 @@ The protected assets are Compute Engine availability, billing-control integrity,
 | Compromised function identity | Custom role limited to get/list/start/stop plus Firestore/logging/Eventarc roles |
 | Secret leakage | Application Default Credentials, no credential variables, logger redaction, ignored env/runtime files |
 | Denial through large scope | Maximum actions, serialized requests, delay, cooldown, function max instances |
-| False operator confidence | `SUBMITTED` terminology, health checks config only, live-provider limitations documented |
+| False operator confidence | Terminal operation polling, explicit submitted/completed/failed states, live-provider caveats |
+| Public dashboard takeover | Strong generated token, HttpOnly secure session, SameSite, CSRF/origin check, login throttling |
+| Forwarded request bypasses local auth | Loopback bypass rejects all forwarded/real-IP headers and is disabled in public mode |
+| HAI gains mutation authority | Separate bearer token, two read-only tools, bounded responses, no generic execution surface |
+| Wrong local service is tunnelled | Port ownership preflight and child-exit-aware health startup |
 
 ## Authentication and authorization
 
-There is no application session model. Authentication is provided by Google Cloud's Eventarc invocation and Application Default Credentials. Authorization is enforced by IAM and again by application-level budget/zone/label/protection boundaries.
+The cloud worker is authenticated by Eventarc and Application Default Credentials. The local control plane permits a clean loopback request only when public access is disabled. Public requests require an operator bearer token or short-lived in-memory session; mutations additionally require CSRF and same-origin checks. HAI requires a separate bearer token and cannot use operator sessions.
 
 Do not add `roles/editor`, `roles/owner`, public invoker access, or service-account keys. Prefer Workload Identity Federation for CI. Rotate access by replacing identities and revoking IAM bindings; there are no secrets in repository configuration.
 
@@ -29,7 +33,7 @@ Do not add `roles/editor`, `roles/owner`, public invoker access, or service-acco
 
 Stored records contain project ID, budget display name, currency, cost values, event identifiers, VM names/zones, decisions, operation identifiers, timestamps, and sanitized errors. They contain operational metadata, not end-user personal data. Restrict Firestore and logs because project/VM names may still be commercially sensitive.
 
-Recommended retention: 90 days for completed events/actions, 365 days for managed-instance/control records or until recovery/reconciliation, whichever is sooner. Configure Firestore TTL policies and Cloud Logging retention at the platform level after organizational approval. Export before deletion when audit retention is required.
+Event and action records receive an `expiresAt` timestamp and Terraform enables Firestore TTL, defaulting to 90 days. Managed-instance/control records remain until recovery/reconciliation because they define safe restart ownership. Configure Cloud Logging retention at the platform level after organizational approval. Export before deletion when longer audit retention is required.
 
 ## Supply chain
 
