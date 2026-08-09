@@ -13,6 +13,7 @@
     "start:control": "node src/control/main.js",
     "dev": "vite --host 127.0.0.1",
     "build:web": "vite build",
+    "build:windows": "powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File scripts/build-windows-release.ps1",
     "preview:web": "vite preview --host 127.0.0.1",
     "lint": "node scripts/check-syntax.js",
     "test": "node --test",
@@ -37,15 +38,14 @@
     "@modelcontextprotocol/sdk": "1.30.0",
     "better-sqlite3": "13.0.1",
     "google-auth-library": "10.5.0",
-    "googleapis": "174.0.1",
-    "lucide-react": "1.30.0",
-    "react": "19.2.8",
-    "react-dom": "19.2.8",
     "zod": "4.4.3"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "6.0.5",
     "c8": "12.0.0",
+    "lucide-react": "1.30.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
     "vite": "8.2.1"
   },
   "overrides": {

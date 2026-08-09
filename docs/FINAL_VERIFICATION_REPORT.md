@@ -13,15 +13,16 @@ This report is updated only from observed command results. It does not claim a l
 ## Verified locally
 
 - JavaScript syntax: passed.
-- Automated tests: 58 passed, 0 failed.
-- Coverage gate: passed at 89.31% lines/statements, 86.63% functions, 80.61% branches.
+- Automated tests: 65 passed, 0 failed.
+- Coverage gate: passed at 90.73% lines/statements, 87.38% functions, 80.64% branches.
 - Test-only critical-path smoke: passed without cloud mutation.
-- React production build: passed; 214.28 kB JavaScript (67.51 kB gzip) and 14.51 kB CSS (3.81 kB gzip).
-- Browser workflow: desktop and 390x844 mobile passed with no console errors, page overflow, or undersized bottom navigation; a real policy write persisted through the API.
+- React production build: passed; 218.38 kB JavaScript (68.41 kB gzip) and 16.35 kB CSS (4.17 kB gzip).
+- Browser workflow: 1440x1000 desktop and 390x844 mobile passed with no unexpected HTTP/console errors, framework overlay, page overflow, clipped drawer shadow, hidden section heading, or undersized bottom navigation. Real login, SQLite policy write, threshold recomputation, plan-only preview, and logout were exercised. The expected initial unauthenticated session probe returned `401`.
 - Windows PowerShell 5.1 setup: generated restricted secrets and built successfully under a supported Node runtime; loopback launcher health/session passed.
+- Portable Windows x64 release: bundled Node 24 launched from the extracted tree, generated a user-only secret file, passed health, and produced a 57.13 MiB ZIP without runtime state. Final SHA-256: `bedcc7a8142b027e3d443352f304cea2fe7dd0e7c83d9f4dea9bafbc24797245`.
 - Dependency install: reproducible lockfile generated; audit reports zero vulnerabilities.
 - Terraform: formatted, initialized with locked providers, and validated using Terraform 1.14.3.
-- Docker Compose configuration: validated. The clean Node 22 image build exposed and fixed missing native compilation tooling, but final image completion was blocked by concurrent Docker workload and a bounded build timeout.
+- Docker Compose configuration: validated. Both Node 22 images built and ran non-root: control health/login/overview/logout passed and function health passed. The final control image is 100,526,874 bytes and excludes Functions Framework; the function image is 87,782,484 bytes and excludes SQLite.
 
 ## Final repository checks
 
@@ -33,7 +34,7 @@ This report is updated only from observed command results. It does not claim a l
 
 ## External blockers
 
-Live deployment and destructive acceptance require an operator-owned Google Cloud project, authenticated deployment identity, Billing budget/topic configuration, Firestore location decision, API quotas, IAM approval, disposable labelled VM, and explicit approval to stop/start it. No real resource action was attempted. The ngrok launcher started the correct authenticated local service, but ngrok rejected endpoint creation with `ERR_NGROK_334` because the account's assigned endpoint was already online; unsafe pooling was not enabled.
+Live deployment and destructive acceptance require an operator-owned Google Cloud project, authenticated deployment identity, Billing budget/topic configuration, Firestore location decision, API quotas, IAM approval, disposable labelled VM, and explicit approval to stop/start it. No real resource action was attempted. The ngrok launcher again started the correct authenticated local service, but ngrok rejected endpoint creation with `ERR_NGROK_334` because the account's assigned endpoint was already online. The CLI has no account API key to inspect/stop that endpoint; unsafe pooling was not enabled.
 
 ## Known limitations and debt
 

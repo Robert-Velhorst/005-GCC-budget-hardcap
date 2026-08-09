@@ -47,28 +47,56 @@ function createControlService({ appConfig, controlConfig, store, compute, now } 
     }, force);
   }
 
-  service = {
-    async getOverview({ refresh = false } = {}) {
-      const config = await effectiveConfig();
-      const [provider, actions, events, managed, stats] = await Promise.all([
-        providerSnapshot(refresh),
+  async function auditSnapshot(config) {
+    try {
+      const [actions, events, managed, stats] = await Promise.all([
         store.listActions(20),
         store.listEvents(60),
         store.listManagedInstances(config.projectId),
         store.getStats(),
       ]);
       return {
+        state: "connected",
+        source: controlConfig.auditSource || store.auditSource || "local",
+        actions,
+        events,
+        managed,
+        stats,
+        error: null,
+      };
+    } catch (error) {
+      return {
+        state: "unavailable",
+        source: controlConfig.auditSource || store.auditSource || "local",
+        actions: [],
+        events: [],
+        managed: [],
+        stats: emptyStats(),
+        error: { code: error.code || "AUDIT_ERROR", message: error.message },
+      };
+    }
+  }
+
+  service = {
+    async getOverview({ refresh = false } = {}) {
+      const config = await effectiveConfig();
+      const [provider, audit] = await Promise.all([
+        providerSnapshot(refresh),
+        auditSnapshot(config),
+      ]);
+      return {
         service: "gcc-budget-hardcap",
         version: require("../../package.json").version,
         timestamp: nowProvider().toISOString(),
         policy: publicConfig(config),
-        budget: summarizeBudget(events, config),
+        budget: summarizeBudget(audit.events, config),
         provider,
-        managedAudit: managed,
-        actions,
-        events: events.slice(0, 20),
-        stats,
-        integrations: integrations(controlConfig, provider),
+        audit: { state: audit.state, source: audit.source, error: audit.error },
+        managedAudit: audit.managed,
+        actions: audit.actions,
+        events: audit.events.slice(0, 20),
+        stats: audit.stats,
+        integrations: integrations(controlConfig, provider, audit),
       };
     },
 
@@ -123,7 +151,7 @@ function createControlService({ appConfig, controlConfig, store, compute, now } 
           checkedAt: overview.provider.checkedAt,
           instanceCounts: countInstances(overview.provider.instances),
         },
-        audit: overview.stats,
+        audit: { ...overview.stats, ...overview.audit },
         recentFailures: overview.actions
           .filter((action) => action.status.includes("FAILED"))
           .slice(0, 10)
@@ -233,10 +261,15 @@ function summarizeBudget(events, config) {
   };
 }
 
-function integrations(controlConfig, provider) {
-  return [
+function integrations(controlConfig, provider, audit) {
+  const values = [
     { id: "google-cloud", name: "Google Cloud", state: provider.state, detail: provider.error?.message || "Compute API connected" },
-    { id: "local-database", name: "Local database", state: "connected", detail: "SQLite WAL" },
+    {
+      id: "local-database",
+      name: "Local database",
+      state: "connected",
+      detail: audit.source === "local" ? "SQLite WAL settings and audit" : "SQLite WAL settings",
+    },
     {
       id: "ngrok",
       name: "ngrok tunnel",
@@ -250,6 +283,19 @@ function integrations(controlConfig, provider) {
       detail: controlConfig.haiConnectorEnabled ? "Read-only MCP context" : "Connector disabled",
     },
   ];
+  if (audit.source === "firestore") {
+    values.splice(2, 0, {
+      id: "cloud-audit",
+      name: "Cloud audit",
+      state: audit.state,
+      detail: audit.error?.message || "Firestore worker history",
+    });
+  }
+  return values;
+}
+
+function emptyStats() {
+  return { eventCount: 0, actionCount: 0, pendingActions: 0, failedActions: 0 };
 }
 
 function countInstances(instances) {

@@ -23,7 +23,7 @@ Status reflects repository implementation, not unperformed Google Cloud account 
 | 016 Jobs/workers | Implemented | Event-driven function is the worker |
 | 017 Idempotency | Implemented | Firestore claims, deterministic request IDs, pending-operation resumption |
 | 018 Rate limits/quotas | Implemented | Cap, delay, cooldown, max instances |
-| 019 Audit history | Implemented | Durable intent/submitted/completed/failed lifecycle records and logs |
+| 019 Audit history | Implemented | Durable lifecycle records plus explicit local/Firestore control-plane reads |
 | 020 User dashboard | Implemented | Responsive budget, provider, action, integration, and policy views |
 | 021 Forms/autosave | Implemented | Explicit review-and-apply policy form with live-mode confirmation |
 | 022 Search/filter/pagination | Implemented | Instance search/state filter and provider pagination |
@@ -36,7 +36,7 @@ Status reflects repository implementation, not unperformed Google Cloud account 
 | 029 Web security headers | Implemented | CSP, frame/type/referrer/permissions/COOP/CORP and no-store API responses |
 | 030 Secrets/rotation | Implemented | ADC, no keys, redaction, rotation guidance |
 | 031 One-command local dev | Implemented | Windows setup/launch scripts plus npm verify |
-| 032 Docker/deployment | Partial | Non-root split images, Compose, Terraform; final image run blocked by Docker contention |
+| 032 Docker/deployment | Implemented | Separately locked non-root control/function images, runtime probes, Compose, Terraform |
 | 033 DB migrations | Implemented | Transactional SQLite schema version migration; Firestore remains schemaless |
 | 034 Doctor CLI | Implemented | Config and optional provider check |
 | 035 Health/readiness | Implemented | Separate HTTP health export |
@@ -45,7 +45,7 @@ Status reflects repository implementation, not unperformed Google Cloud account 
 | 038 Fake provider lab | Implemented | Explicit test-only smoke and test fakes |
 | 039 Fixtures/factories | Implemented | Test event/config/instance/store helpers |
 | 040 Backend tests | Implemented | Unit, adapter, integration tests |
-| 041 Frontend tests | Implemented | Production build plus Playwright desktop/mobile/API workflow |
+| 041 Frontend tests | Implemented | Production build plus login/policy/preview/logout Playwright workflow |
 | 042 Worker tests | Implemented | Handler state/action coverage |
 | 043 End-to-end tests | Partial | Browser/API/MCP and in-process worker passed; live Google test blocked |
 | 044 Acceptance matrix | Implemented | Automated and live matrices documented |
@@ -54,7 +54,7 @@ Status reflects repository implementation, not unperformed Google Cloud account 
 | 047 Path traversal | Implemented | Static root containment and hashed persistence identifiers |
 | 048 Provider failure simulation | Implemented | Compute, Firestore, notification failures tested |
 | 049 Accessibility | Implemented | Semantic controls/tables/status, labels, focus states, 44px mobile navigation |
-| 050 Browser/responsive | Implemented | Playwright desktop/mobile screenshots, overflow and console checks |
+| 050 Browser/responsive | Implemented | Desktop/mobile screenshots, overflow, fixed-header, drawer, console, target-size checks |
 | 051 Performance baseline | Partial | Serialized bounded actions; no live quota/load baseline |
 | 052 Large dataset | Implemented | Provider pagination and hard action cap |
 | 053 Backup/restore | Implemented | Firestore export/import runbook |
@@ -96,7 +96,7 @@ Status reflects repository implementation, not unperformed Google Cloud account 
 | 089 Stabilization gates | Implemented | CI plus plan-first rollout |
 | 090 No vanity work | Implemented | Inapplicable product surfaces omitted |
 | 091 Feature definition of done | Implemented | Tests/docs/wiring required per critical path |
-| 092 Fresh-clone dry run | Partial | Node 22/24 install, lint, coverage, build, smoke pass; clean image completion timed out |
+| 092 Fresh-clone dry run | Implemented | Node 22/24 install, lint, coverage, build, smoke, both clean images, portable release |
 | 093 Manual evidence | Partial | Browser/Windows evidence complete; live provider and durable ngrok acceptance blocked |
 | 094 No-excuses search | Implemented | Placeholder, secret, generated-file, diff, and status scans |
 | 095 Completion matrix | Implemented | This document |

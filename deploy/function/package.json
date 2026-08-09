@@ -1,0 +1,17 @@
+{
+  "name": "gcc-budget-hardcap-function-runtime",
+  "version": "3.0.0",
+  "private": true,
+  "type": "commonjs",
+  "engines": {
+    "node": ">=22 <25"
+  },
+  "dependencies": {
+    "@google-cloud/firestore": "8.7.1",
+    "@google-cloud/functions-framework": "5.0.5",
+    "google-auth-library": "10.5.0"
+  },
+  "overrides": {
+    "uuid": "11.1.1"
+  }
+}

@@ -151,9 +151,7 @@ function instanceKey(instance) {
 }
 
 function defaultGoogleFactory() {
-  const { GoogleAuth } = require("google-auth-library");
-  const { compute } = require("googleapis/build/src/apis/compute");
-  return { auth: { GoogleAuth }, compute };
+  return require("./google-rest").createComputeGoogleFactory();
 }
 
 function providerError(message, error) {

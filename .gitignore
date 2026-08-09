@@ -5,6 +5,7 @@ node_modules/
 !.env.example
 coverage/
 web/dist/
+dist/
 .runtime/
 .nyc_output/
 *.log

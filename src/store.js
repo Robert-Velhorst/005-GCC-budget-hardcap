@@ -201,7 +201,72 @@ function createFirestoreStore(config, firestoreFactory = defaultFirestoreFactory
         { merge: true },
       );
     },
+
+    async listActions(limit = 50) {
+      const snapshot = await actions.orderBy("updatedAt", "desc").limit(clampReadLimit(limit)).get();
+      return snapshot.docs.map((document) => toPlainDocument(document, "actionId"));
+    },
+
+    async listEvents(limit = 50) {
+      const snapshot = await events.orderBy("updatedAt", "desc").limit(clampReadLimit(limit)).get();
+      return snapshot.docs.map((document) => toPlainDocument(document, "eventId"));
+    },
+
+    async listManagedInstances(projectId) {
+      const snapshot = await managed.where("projectId", "==", projectId).limit(1000).get();
+      return snapshot.docs
+        .map((document) => toPlainDocument(document, "instanceKey"))
+        .sort((left, right) => Date.parse(right.updatedAt || 0) - Date.parse(left.updatedAt || 0));
+    },
+
+    async getStats() {
+      const [eventCount, actionCount, pendingCount, failedCount] = await Promise.all([
+        aggregateCount(events),
+        aggregateCount(actions),
+        aggregateCount(actions.where("status", "in", ["INTENT_RECORDED", "SUBMITTED"])),
+        aggregateCount(actions.where("status", "in", ["FAILED", "FAILED_RETRYABLE"])),
+      ]);
+      return {
+        eventCount,
+        actionCount,
+        pendingActions: pendingCount,
+        failedActions: failedCount,
+      };
+    },
+
+    async close() {
+      await firestore.terminate?.();
+    },
   };
+}
+
+async function aggregateCount(query) {
+  const snapshot = await query.count().get();
+  return Number(snapshot.data().count || 0);
+}
+
+function clampReadLimit(value) {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed)) return 50;
+  return Math.max(1, Math.min(parsed, 1000));
+}
+
+function toPlainDocument(document, fallbackField) {
+  const value = normalizeFirestoreValue(document.data());
+  if (!value[fallbackField] && document.id) value[fallbackField] = document.id;
+  return value;
+}
+
+function normalizeFirestoreValue(value) {
+  if (value?.toDate instanceof Function) return value.toDate().toISOString();
+  if (value instanceof Date) return value.toISOString();
+  if (Array.isArray(value)) return value.map(normalizeFirestoreValue);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [key, normalizeFirestoreValue(item)]),
+    );
+  }
+  return value;
 }
 
 function safeDocumentId(value) {

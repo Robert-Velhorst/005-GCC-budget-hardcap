@@ -14,13 +14,16 @@ function createNotifier(config, googleFactory = defaultGoogleFactory) {
   return {
     async publish(notification) {
       try {
-        await pubsub.projects.topics.publish({
-          topic,
-          auth,
-          requestBody: {
-            messages: [{ data: Buffer.from(JSON.stringify(notification)).toString("base64") }],
+        await pubsub.projects.topics.publish(
+          {
+            topic,
+            auth,
+            requestBody: {
+              messages: [{ data: Buffer.from(JSON.stringify(notification)).toString("base64") }],
+            },
           },
-        });
+          { timeout: config.providerRequestTimeoutMs },
+        );
       } catch (error) {
         throw new ProviderError("Failed to publish the operator notification.", {
           retryable: true,
@@ -36,7 +39,7 @@ function normalizeTopic(projectId, topic) {
 }
 
 function defaultGoogleFactory() {
-  return require("googleapis").google;
+  return require("./google-rest").createPubSubGoogleFactory();
 }
 
 module.exports = { createNotifier, normalizeTopic };

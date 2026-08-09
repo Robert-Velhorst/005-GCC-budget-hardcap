@@ -58,6 +58,25 @@ test("provider probe deadlines reject stalled adapters", async () => {
   );
 });
 
+test("unavailable Firestore audit degrades truthfully without taking down provider status", async () => {
+  const store = memoryReadStore();
+  store.auditSource = "firestore";
+  store.listEvents = async () => { throw new Error("credentials unavailable"); };
+  const service = createControlService({
+    appConfig: config(),
+    controlConfig: { providerCacheMs: 30000, auditSource: "firestore" },
+    store,
+    compute: { async getProject() { return {}; }, async listInstances() { return []; } },
+  });
+
+  const overview = await service.getOverview();
+  assert.equal(overview.provider.state, "connected");
+  assert.equal(overview.audit.state, "unavailable");
+  assert.equal(overview.audit.source, "firestore");
+  assert.equal(overview.stats.eventCount, 0);
+  assert.equal(overview.integrations.find((item) => item.id === "cloud-audit").state, "unavailable");
+});
+
 function memoryReadStore(overrides = {}) {
   const settings = new Map();
   return {
@@ -66,6 +85,6 @@ function memoryReadStore(overrides = {}) {
     async listActions() { return overrides.actions || []; },
     async listEvents() { return overrides.events || []; },
     async listManagedInstances() { return []; },
-    async getStats() { return { events: 0, actions: 0, failedActions: 0, pendingActions: 0 }; },
+    async getStats() { return { eventCount: 0, actionCount: 0, failedActions: 0, pendingActions: 0 }; },
   };
 }

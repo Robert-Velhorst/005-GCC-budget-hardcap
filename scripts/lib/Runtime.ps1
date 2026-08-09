@@ -33,6 +33,15 @@ function Assert-SupportedNode {
     if ($major -lt 22 -or $major -ge 25) { throw "Node.js 22, 23, or 24 is required; found $version." }
 }
 
+function Invoke-Npm {
+    param([Parameter(ValueFromRemainingArguments = $true)][string[]]$NpmArguments)
+    $node = (Get-Command node).Source
+    $npmCommand = (Get-Command npm.cmd).Source
+    $npmCli = Join-Path (Split-Path -Parent $npmCommand) 'node_modules\npm\bin\npm-cli.js'
+    if (-not (Test-Path -LiteralPath $npmCli)) { throw 'Could not locate npm-cli.js beside npm.cmd.' }
+    & $node $npmCli @NpmArguments
+}
+
 function Assert-LocalPortAvailable {
     param([int]$Port = 8787)
     $listener = [Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback, $Port)

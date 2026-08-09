@@ -2,6 +2,8 @@
 
 const { readConfig } = require("../config");
 const { createLogger } = require("../logger");
+const { createFirestoreStore } = require("../store");
+const { createControlStore } = require("./audit-store");
 const { readControlConfig } = require("./config");
 const { createControlServer } = require("./server");
 const { createControlService } = require("./service");
@@ -11,8 +13,16 @@ async function main() {
   const appConfig = readConfig();
   const controlConfig = readControlConfig();
   const logger = createLogger().child({ component: "control-plane" });
-  const store = createSqliteStore({ ...appConfig, databasePath: controlConfig.databasePath });
-  await store.cleanupExpired();
+  const localStore = createSqliteStore({ ...appConfig, databasePath: controlConfig.databasePath });
+  await localStore.cleanupExpired();
+  const auditStore = controlConfig.auditSource === "firestore"
+    ? createFirestoreStore(appConfig)
+    : localStore;
+  const store = createControlStore({
+    local: localStore,
+    audit: auditStore,
+    auditSource: controlConfig.auditSource,
+  });
   const service = createControlService({ appConfig, controlConfig, store });
   const application = createControlServer({ controlConfig, service, logger });
   const address = await application.listen();
@@ -22,11 +32,12 @@ async function main() {
     port: address.port,
     publicAccessEnabled: controlConfig.publicAccessEnabled,
     haiConnectorEnabled: controlConfig.haiConnectorEnabled,
-    database: "sqlite",
+    settingsDatabase: "sqlite",
+    auditSource: controlConfig.auditSource,
   });
 
   const cleanup = setInterval(() => {
-    void store.cleanupExpired().catch((error) => logger.error("Retention cleanup failed.", { error: error.message }));
+    void localStore.cleanupExpired().catch((error) => logger.error("Retention cleanup failed.", { error: error.message }));
   }, 6 * 60 * 60 * 1000);
   cleanup.unref();
 
@@ -37,7 +48,7 @@ async function main() {
     clearInterval(cleanup);
     logger.info("Stopping operator control plane.", { signal });
     await application.close();
-    store.close();
+    await store.close();
   }
   process.once("SIGINT", () => void shutdown("SIGINT"));
   process.once("SIGTERM", () => void shutdown("SIGTERM"));

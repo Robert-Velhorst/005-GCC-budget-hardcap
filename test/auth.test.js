@@ -36,8 +36,21 @@ test("operator and HAI bearer tokens are role separated", () => {
   assert.equal(safeEqual("short", "different"), false);
 });
 
+test("login throttling ignores spoofed forwarding headers unless proxy trust is enabled", () => {
+  const direct = createAuth(config({ publicAccessEnabled: true, trustProxy: false }));
+  for (let index = 0; index < 5; index += 1) {
+    assert.equal(direct.login(request({ "x-forwarded-for": `198.51.100.${index}` }), "wrong").ok, false);
+  }
+  assert.equal(direct.login(request({ "x-forwarded-for": "203.0.113.1" }), "wrong").rateLimited, true);
+
+  const proxied = createAuth(config({ publicAccessEnabled: true, trustProxy: true }));
+  for (let index = 0; index < 6; index += 1) {
+    assert.notEqual(proxied.login(request({ "x-forwarded-for": `198.51.100.${index}` }), "wrong").rateLimited, true);
+  }
+});
+
 function config(overrides = {}) {
-  return { publicAccessEnabled: false, controlPlaneToken: operatorToken, haiConnectorToken: haiToken, sessionTtlMs: 1000, ...overrides };
+  return { publicAccessEnabled: false, trustProxy: false, controlPlaneToken: operatorToken, haiConnectorToken: haiToken, sessionTtlMs: 1000, ...overrides };
 }
 
 function request(headers = {}) {

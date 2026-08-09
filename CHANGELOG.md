@@ -7,7 +7,11 @@
 - Added Windows 11 setup, loopback launcher, fail-closed ngrok launcher, Docker Compose, and separate control/function images.
 - Added a bearer-authenticated, read-only MCP connector for HAI with bounded status and incident tools.
 - Upgraded deployment and CI to Node.js 22 and added provider request deadlines.
-- Expanded the suite to 58 tests, including sessions, CSRF, SQLite, API, provider timeout, and real MCP protocol coverage.
+- Added a token-free portable Windows x64 ZIP builder with bundled Node, first-run secret generation, and SHA-256 output.
+- Added an optional Firestore audit bridge while retaining SQLite-only local settings and truthful unavailable states.
+- Replaced generated Google client packages with fixed-host authenticated REST adapters and split locked control/function runtime manifests.
+- Added real logout and plan-only budget preview UI workflows, login throttling hardening, and static/MCP method fixes.
+- Expanded the suite to 65 tests, including sessions, CSRF, SQLite/Firestore audit parity, REST adapters, API, provider timeout, and real MCP protocol coverage.
 
 ## 2.1.0 - 2026-08-09
 

@@ -3,11 +3,11 @@ FROM node:22.18.0-bookworm-slim
 ENV NODE_ENV=production
 WORKDIR /app
 
-COPY package.json package-lock.json ./
+COPY deploy/function/package.json deploy/function/package-lock.json ./
 RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
 COPY index.js ./
 COPY src ./src
 
 USER node
 EXPOSE 8080
-CMD ["npx", "functions-framework", "--target=manageInstancesOnBudget", "--signature-type=cloudevent", "--port=8080"]
+CMD ["node", "node_modules/@google-cloud/functions-framework/build/src/main.js", "--target=manageInstancesOnBudget", "--signature-type=cloudevent", "--port=8080"]

@@ -10,6 +10,7 @@ test("control config defaults to loopback SQLite mode", () => {
   assert.equal(config.port, 8787);
   assert.equal(config.publicAccessEnabled, false);
   assert.equal(config.haiConnectorEnabled, false);
+  assert.equal(config.auditSource, "local");
   assert.match(config.databasePath, /budget-hardcap\.db$/);
 });
 
@@ -42,4 +43,9 @@ test("non-loopback binding requires explicit public mode", () => {
     CONTROL_PLANE_TOKEN: "o".repeat(32),
   });
   assert.equal(config.host, "0.0.0.0");
+});
+
+test("control audit source is explicit and validated", () => {
+  assert.equal(readControlConfig({ CONTROL_AUDIT_SOURCE: "firestore" }).auditSource, "firestore");
+  assert.throws(() => readControlConfig({ CONTROL_AUDIT_SOURCE: "automatic" }), /CONTROL_AUDIT_SOURCE/);
 });

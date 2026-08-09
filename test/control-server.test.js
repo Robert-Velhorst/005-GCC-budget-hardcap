@@ -23,9 +23,9 @@ test("control server serves the app and local authenticated API with security he
   assert.equal((await overview.json()).service, "gcc-budget-hardcap");
 
   const traversal = await fetch(`${fixture.url}/..%2F..%2Fpackage.json`);
-  assert.equal(traversal.status, 200);
-  assert.match(await traversal.text(), /Control plane fixture/);
-  assert.doesNotMatch(await (await fetch(`${fixture.url}/..%2F..%2Fpackage.json`)).text(), /"dependencies"/);
+  assert.equal(traversal.status, 404);
+  assert.equal((await fetch(`${fixture.url}/missing.js`)).status, 404);
+  assert.match(await (await fetch(`${fixture.url}/policy`)).text(), /Control plane fixture/);
 });
 
 test("public mode requires login and CSRF for policy writes", async (t) => {
@@ -40,6 +40,7 @@ test("public mode requires login and CSRF for policy writes", async (t) => {
   assert.equal(login.status, 200);
   const cookie = login.headers.get("set-cookie").split(";")[0];
   const session = await login.json();
+  assert.equal(session.mode, "session");
 
   const rejected = await fetch(`${fixture.url}/api/v1/policy`, {
     method: "PUT",
@@ -76,6 +77,11 @@ test("HAI connector completes authenticated MCP initialize, list, and read-only 
   assert.deepEqual(tools.result.tools.map((tool) => tool.name), ["get_budget_hardcap_status", "list_budget_hardcap_incidents"]);
   const called = await mcpCall(fixture.url, headers, sessionId, { jsonrpc: "2.0", id: 3, method: "tools/call", params: { name: "get_budget_hardcap_status", arguments: {} } });
   assert.equal(called.result.structuredContent.authority, "read_only_advisory");
+  const terminated = await fetch(`${fixture.url}/mcp`, {
+    method: "DELETE",
+    headers: { ...headers, "mcp-session-id": sessionId },
+  });
+  assert.ok([200, 204].includes(terminated.status));
 });
 
 async function mcpCall(url, headers, sessionId, body) {

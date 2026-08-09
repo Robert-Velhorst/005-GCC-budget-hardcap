@@ -24,6 +24,18 @@ External work remaining: initialize/deploy Terraform in the operator account and
 - Added separate HAI bearer authority and real read-only MCP Streamable HTTP tools.
 - Split control-plane and function container images, added Compose, and upgraded CI/Terraform runtimes to Node 22.
 - Fixed defects found by execution: missing policy fields causing `NaN`, PowerShell 5.1 token API incompatibility, indefinite provider probes, wrong-process tunnel startup, and missing native SQLite container toolchain.
-- Passed 58 tests, coverage, production web build, smoke, audit, Terraform, Compose, Windows launcher, and desktop/mobile browser QA.
+- At that checkpoint, passed 58 tests, coverage, production web build, smoke, audit, Terraform, Compose, Windows launcher, and desktop/mobile browser QA.
 
-External work remaining: live Google Cloud disposable-VM acceptance, owner resolution of ngrok `ERR_NGROK_334`, and a final image build/run when concurrent Docker workload is clear.
+External work remaining at that checkpoint: live Google Cloud disposable-VM acceptance and owner resolution of ngrok `ERR_NGROK_334`.
+
+## 2026-08-09 - production completion pass
+
+- Added optional Firestore audit reads to the Windows control plane while keeping settings in local SQLite and degrading unavailable cloud audit truthfully.
+- Replaced generated Google clients with lightweight authenticated REST adapters and added fixed-host/path/deadline tests.
+- Split locked production dependency manifests for control and function runtimes; both Node 22 images built and passed non-root health/runtime checks.
+- Added a portable Windows x64 release builder, bundled Node runtime, first-run restricted secrets, public/local launchers, ZIP, and SHA-256 verification.
+- Added real logout and plan-only budget preview, corrected stale threshold recomputation, hardened proxy-aware login throttling and static routing, and completed MCP GET/POST/DELETE support.
+- Fixed mobile closed-drawer shadow and fixed-header section navigation defects found by rendered QA.
+- Passed 65 tests, enforced coverage, production build, smoke, dependency audits, container runtime checks, portable runtime checks, and desktop/mobile browser workflows.
+
+External work remaining: approved live Google Cloud disposable-VM acceptance and owner resolution of the already-online ngrok endpoint. The repository cannot safely stop or pool with an endpoint owned by another running process.

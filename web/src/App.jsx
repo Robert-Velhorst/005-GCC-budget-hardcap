@@ -11,6 +11,7 @@ import {
   Link2,
   LoaderCircle,
   LogIn,
+  LogOut,
   Menu,
   RefreshCw,
   Search,
@@ -34,6 +35,7 @@ export default function App() {
   const [overview, setOverview] = useState(null);
   const [error, setError] = useState(null);
   const [authenticated, setAuthenticated] = useState(true);
+  const [sessionMode, setSessionMode] = useState("local");
   const [activeSection, setActiveSection] = useState("overview");
   const [menuOpen, setMenuOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -56,6 +58,7 @@ export default function App() {
     void api("/api/v1/session")
       .then((session) => {
         setCsrfToken(session.csrfToken);
+        setSessionMode(session.mode || "local");
         return load();
       })
       .catch((requestError) => {
@@ -66,6 +69,7 @@ export default function App() {
 
   if (!authenticated) return <Login onSuccess={(data) => {
     setCsrfToken(data.csrfToken);
+    setSessionMode(data.mode || "session");
     setAuthenticated(true);
     void load();
   }} />;
@@ -79,23 +83,38 @@ export default function App() {
     document.getElementById(section)?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  const logout = async () => {
+    try {
+      await api("/api/v1/session", { method: "DELETE" });
+      setCsrfToken("");
+      setOverview(null);
+      setAuthenticated(false);
+    } catch (requestError) {
+      setError(requestError.message);
+    }
+  };
+
   return (
     <div className="app-shell">
-      <Header overview={overview} onRefresh={() => void load(true)} refreshing={isPending} onMenu={() => setMenuOpen((value) => !value)} />
+      <Header overview={overview} onRefresh={() => void load(true)} refreshing={isPending} onMenu={() => setMenuOpen((value) => !value)} onLogout={sessionMode === "session" ? () => void logout() : null} />
       <Sidebar active={activeSection} onSelect={selectSection} open={menuOpen} version={overview.version} policy={overview.policy} />
       <main className="workspace">
         {error ? <InlineAlert message={error} onDismiss={() => setError(null)} /> : null}
         <section id="overview" className="overview-grid" aria-label="Budget overview">
           <div className="main-column">
             <StatusStrip overview={overview} />
-            <SpendChart budget={overview.budget} />
+            <SpendChart budget={overview.budget} audit={overview.audit} policy={overview.policy} />
             <InstancesSection overview={overview} />
             <div className="lower-grid">
-              <ActionsSection actions={overview.actions} />
+              <ActionsSection actions={overview.actions} audit={overview.audit} />
               <IntegrationsSection integrations={overview.integrations} />
             </div>
           </div>
-          <PolicyPanel policy={overview.policy} onSaved={(policy) => setOverview((value) => ({ ...value, policy }))} />
+          <PolicyPanel policy={overview.policy} onSaved={(policy) => setOverview((value) => ({
+            ...value,
+            policy,
+            budget: { ...value.budget, thresholdAmount: value.budget.limit * policy.thresholdRatio },
+          }))} />
         </section>
       </main>
       <MobileNav active={activeSection} onSelect={selectSection} />
@@ -103,7 +122,7 @@ export default function App() {
   );
 }
 
-function Header({ overview, onRefresh, refreshing, onMenu }) {
+function Header({ overview, onRefresh, refreshing, onMenu, onLogout }) {
   const connected = overview.provider.state === "connected";
   return (
     <header className="topbar">
@@ -116,6 +135,7 @@ function Header({ overview, onRefresh, refreshing, onMenu }) {
       <button className="icon-button" type="button" onClick={onRefresh} aria-label="Refresh provider data" title="Refresh provider data">
         <RefreshCw className={refreshing ? "spin" : ""} />
       </button>
+      {onLogout ? <button className="icon-button" type="button" onClick={onLogout} aria-label="Sign out" title="Sign out"><LogOut /></button> : null}
     </header>
   );
 }
@@ -141,7 +161,8 @@ function Sidebar({ active, onSelect, open, version, policy }) {
 }
 
 function StatusStrip({ overview }) {
-  const { budget, policy, events } = overview;
+  const { audit, budget, policy, events } = overview;
+  const auditUnavailable = audit?.state === "unavailable";
   const ratio = budget.ratio == null ? null : Math.round(budget.ratio * 100);
   const latestEvent = events[0];
   const withinBudget = ratio == null || ratio < policy.thresholdRatio * 100;
@@ -150,8 +171,8 @@ function StatusStrip({ overview }) {
       <Metric label="Spend" value={ratio == null ? "No data" : `${ratio}%`} detail={budget.latest ? formatMoney(budget.latest.costAmount, budget.latest.currencyCode) : "Waiting for budget event"} />
       <Metric label="Threshold" value={`${Math.round(policy.thresholdRatio * 100)}%`} detail={formatMoney(budget.thresholdAmount, policy.expectedCurrency)} />
       <Metric label="Policy state" value={withinBudget ? "Within budget" : "Threshold reached"} detail={`${capitalize(policy.executionMode)} mode`} tone={withinBudget ? "safe" : "danger"} />
-      <Metric label="Last event" value={latestEvent ? formatDate(latestEvent.updatedAt) : "None received"} detail={latestEvent?.status || "Local audit is empty"} />
-      <Metric label="Pending" value={String(overview.stats.pendingActions)} detail={`${overview.stats.failedActions} failed actions`} />
+      <Metric label="Last event" value={auditUnavailable ? "Unavailable" : latestEvent ? formatDate(latestEvent.updatedAt) : "None received"} detail={auditUnavailable ? "Audit source could not be read" : latestEvent?.status || "Audit is empty"} />
+      <Metric label="Pending" value={auditUnavailable ? "Unknown" : String(overview.stats.pendingActions)} detail={auditUnavailable ? "Audit source unavailable" : `${overview.stats.failedActions} failed actions`} />
     </div>
   );
 }
@@ -160,7 +181,8 @@ function Metric({ label, value, detail, tone }) {
   return <div className="metric"><span>{label}</span><strong className={tone ? `${tone}-text` : ""}>{value}</strong><small>{detail}</small></div>;
 }
 
-function SpendChart({ budget }) {
+function SpendChart({ budget, audit, policy }) {
+  const [previewOpen, setPreviewOpen] = useState(false);
   const points = budget.points;
   const width = 920;
   const height = 260;
@@ -175,8 +197,10 @@ function SpendChart({ budget }) {
 
   return (
     <section className="panel chart-panel" aria-labelledby="spend-title">
-      <div className="panel-heading"><div><h2 id="spend-title">Spend over observed events</h2><p>{budget.caveat}</p></div><span className={`data-state ${budget.state}`}>{budget.state === "observed" ? "Observed" : "No events"}</span></div>
-      {points.length === 0 ? (
+      <div className="panel-heading"><div><h2 id="spend-title">Spend over observed events</h2><p>{budget.caveat}</p></div><div className="heading-actions"><span className={`data-state ${budget.state}`}>{budget.state === "observed" ? "Observed" : "No events"}</span><button className="secondary-button compact" type="button" onClick={() => setPreviewOpen(true)}><Zap />Preview</button></div></div>
+      {audit?.state === "unavailable" ? (
+        <EmptyState icon={AlertTriangle} title="Audit history unavailable" detail="Check Firestore credentials, project access, and the configured audit source." />
+      ) : points.length === 0 ? (
         <EmptyState icon={CircleDollarSign} title="No budget events yet" detail="The chart will use the event audit after the first Billing notification or local preview." />
       ) : (
         <div className="chart-wrap">
@@ -190,8 +214,46 @@ function SpendChart({ budget }) {
           </svg>
         </div>
       )}
+      {previewOpen ? <BudgetPreview policy={policy} onClose={() => setPreviewOpen(false)} /> : null}
     </section>
   );
+}
+
+function BudgetPreview({ policy, onClose }) {
+  const [form, setForm] = useState({
+    budgetDisplayName: policy.allowedBudgetNames[0] || "Manual preview",
+    costAmount: "",
+    budgetAmount: String(policy.budgetLimit),
+    currencyCode: policy.expectedCurrency || "EUR",
+  });
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState("");
+  const [running, setRunning] = useState(false);
+  useEffect(() => {
+    const onKeyDown = (event) => { if (event.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
+  const update = (name, value) => setForm((current) => ({ ...current, [name]: value }));
+  const submit = async (event) => {
+    event.preventDefault();
+    setRunning(true); setError(""); setResult(null);
+    try {
+      setResult(await api("/api/v1/budget/preview", {
+        method: "POST",
+        body: JSON.stringify({
+          ...form,
+          costAmount: Number(form.costAmount),
+          budgetAmount: Number(form.budgetAmount),
+        }),
+      }));
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setRunning(false);
+    }
+  };
+  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><section className="preview-modal" role="dialog" aria-modal="true" aria-labelledby="preview-title"><div className="modal-heading"><div><h2 id="preview-title">Budget event preview</h2><p>Plan-only evaluation</p></div><button className="icon-button" type="button" onClick={onClose} aria-label="Close preview"><X /></button></div><form onSubmit={submit}><label><span>Budget name</span><input autoFocus value={form.budgetDisplayName} onChange={(event) => update("budgetDisplayName", event.target.value)} required /></label><div className="preview-grid"><label><span>Observed cost</span><input type="number" min="0" step="0.01" value={form.costAmount} onChange={(event) => update("costAmount", event.target.value)} required /></label><label><span>Budget amount</span><input type="number" min="0.01" step="0.01" value={form.budgetAmount} onChange={(event) => update("budgetAmount", event.target.value)} required /></label></div><label><span>Currency</span><input value={form.currencyCode} onChange={(event) => update("currencyCode", event.target.value.toUpperCase())} maxLength="3" required /></label>{error ? <p className="danger-message" role="alert">{error}</p> : null}{result ? <div className="preview-result" role="status"><strong>{humanState(result.decision || result.status)}</strong><span>{result.actionCount || 0} scoped actions</span><small>{result.reason}</small></div> : null}<button className="primary-button" disabled={running}>{running ? <LoaderCircle className="spin" /> : <Zap />}Run preview</button></form></section></div>;
 }
 
 function InstancesSection({ overview }) {
@@ -224,11 +286,11 @@ function InstancesSection({ overview }) {
   );
 }
 
-function ActionsSection({ actions }) {
+function ActionsSection({ actions, audit }) {
   return (
     <section id="actions" className="panel data-panel" aria-labelledby="actions-title">
       <div className="panel-heading"><div><h2 id="actions-title">Action history</h2><p>Durable local audit lifecycle</p></div><History aria-hidden="true" /></div>
-      {actions.length === 0 ? <EmptyState icon={History} title="No actions recorded" detail="Intent, submission, completion, and failure records will appear here." /> : (
+      {audit?.state === "unavailable" ? <EmptyState icon={AlertTriangle} title="Action audit unavailable" detail="The selected audit source could not be read; zero actions is not assumed." /> : actions.length === 0 ? <EmptyState icon={History} title="No actions recorded" detail="Intent, submission, completion, and failure records will appear here." /> : (
         <div className="table-scroll compact-table"><table><thead><tr><th>Time</th><th>Instance</th><th>Action</th><th>Result</th></tr></thead><tbody>{actions.map((action) => <tr key={action.actionId}><td>{formatDate(action.updatedAt)}</td><td>{action.instanceName}</td><td>{capitalize(action.action)}</td><td><StatusText status={action.status} /></td></tr>)}</tbody></table></div>
       )}
     </section>
@@ -236,7 +298,7 @@ function ActionsSection({ actions }) {
 }
 
 function IntegrationsSection({ integrations }) {
-  const iconMap = { "google-cloud": Cloud, "local-database": Database, ngrok: ExternalLink, hai: Link2 };
+  const iconMap = { "google-cloud": Cloud, "cloud-audit": Cloud, "local-database": Database, ngrok: ExternalLink, hai: Link2 };
   return (
     <section id="integrations" className="panel integrations" aria-labelledby="integrations-title">
       <div className="panel-heading"><div><h2 id="integrations-title">Integrations</h2><p>Configured and live are reported separately</p></div><Link2 aria-hidden="true" /></div>

@@ -18,6 +18,11 @@ function readControlConfig(env = process.env, cwd = process.cwd()) {
   );
   const controlPlaneToken = optionalString(env.CONTROL_PLANE_TOKEN);
   const haiConnectorToken = optionalString(env.HAI_CONNECTOR_TOKEN);
+  const auditSource = optionalString(env.CONTROL_AUDIT_SOURCE) || "local";
+
+  if (!["local", "firestore"].includes(auditSource)) {
+    throw new ConfigurationError("CONTROL_AUDIT_SOURCE must be 'local' or 'firestore'.");
+  }
 
   if (!isLoopbackHost(host) && !publicAccessEnabled) {
     throw new ConfigurationError(
@@ -52,6 +57,7 @@ function readControlConfig(env = process.env, cwd = process.cwd()) {
     controlPlaneToken,
     haiConnectorEnabled,
     haiConnectorToken,
+    auditSource,
     sessionTtlMs: parseInteger(env.SESSION_TTL_MINUTES, 480, "SESSION_TTL_MINUTES", 15, 1440) * 60000,
     providerCacheMs: parseInteger(env.PROVIDER_CACHE_SECONDS, 30, "PROVIDER_CACHE_SECONDS", 5, 300) * 1000,
   });

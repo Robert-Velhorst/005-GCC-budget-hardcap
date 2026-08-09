@@ -65,6 +65,20 @@ test("Firestore store enforces event claims and records the action lifecycle", a
     errorMessage: "failed",
   }, now);
 
+  const listedEvents = await store.listEvents(10);
+  const listedActions = await store.listActions(10);
+  const listedManaged = await store.listManagedInstances("test-project");
+  const stats = await store.getStats();
+  assert.ok(listedEvents.every((record) => typeof record.updatedAt === "string"));
+  assert.ok(listedActions.every((record) => typeof record.updatedAt === "string"));
+  assert.equal(listedManaged.length, 2);
+  assert.deepEqual(stats, {
+    eventCount: 3,
+    actionCount: 2,
+    pendingActions: 1,
+    failedActions: 1,
+  });
+
   const eventDocuments = firestore._collections.get("budgetHardcap_events");
   const actionDocuments = firestore._collections.get("budgetHardcap_actions");
   assert.ok([...eventDocuments.values()][0].expiresAt instanceof Date);
@@ -88,6 +102,7 @@ function fakeFirestore() {
     if (!collections.has(name)) collections.set(name, new Map());
     const documents = collections.get(name);
     return {
+      ...queryApi(documents),
       doc(id) {
         return {
           id,
@@ -100,14 +115,47 @@ function fakeFirestore() {
           },
         };
       },
+    };
+  }
+
+  function queryApi(documents, predicates = [], ordering = null, maximum = Infinity) {
+    function selected() {
+      const values = [...documents.entries()]
+        .filter(([, value]) => predicates.every((predicate) => predicate(value)));
+      if (ordering) {
+        const direction = ordering.direction === "desc" ? -1 : 1;
+        values.sort(([, left], [, right]) => {
+          const leftValue = left[ordering.field]?.getTime?.() ?? left[ordering.field];
+          const rightValue = right[ordering.field]?.getTime?.() ?? right[ordering.field];
+          return direction * (leftValue > rightValue ? 1 : leftValue < rightValue ? -1 : 0);
+        });
+      }
+      return values.slice(0, maximum);
+    }
+
+    return {
+      async get() {
+        return {
+          docs: selected().map(([id, value]) => ({ id, data: () => value })),
+        };
+      },
       where(field, operator, expected) {
-        assert.equal(operator, "==");
+        assert.ok(["==", "in"].includes(operator));
+        const predicate = operator === "=="
+          ? (value) => value[field] === expected
+          : (value) => expected.includes(value[field]);
+        return queryApi(documents, [...predicates, predicate], ordering, maximum);
+      },
+      orderBy(field, direction) {
+        return queryApi(documents, predicates, { field, direction }, maximum);
+      },
+      limit(value) {
+        return queryApi(documents, predicates, ordering, value);
+      },
+      count() {
         return {
           async get() {
-            const docs = [...documents.entries()]
-              .filter(([, value]) => value[field] === expected)
-              .map(([id, value]) => ({ id, data: () => value }));
-            return { docs };
+            return { data: () => ({ count: selected().length }) };
           },
         };
       },

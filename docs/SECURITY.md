@@ -37,6 +37,6 @@ Event and action records receive an `expiresAt` timestamp and Terraform enables 
 
 ## Supply chain
 
-Dependencies are pinned in `package.json` and locked by `package-lock.json`. CI runs `npm ci` and `npm audit --audit-level=moderate`. Dependabot monitors npm and GitHub Actions. The UUID override removes the currently reported transitive advisory and must be revalidated when Functions Framework updates.
+Dependencies are pinned and locked for development, the control runtime, and the function runtime. CI runs `npm ci` and `npm audit --audit-level=moderate`. Dependabot monitors all three npm manifests and GitHub Actions. The UUID override removes the currently reported transitive advisory and must be revalidated when Functions Framework updates.
 
 Report vulnerabilities privately to the repository owner. Do not include credentials, project data, or exploitable production details in public issues.

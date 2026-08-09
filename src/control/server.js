@@ -43,7 +43,7 @@ function createControlServer({ controlConfig, service, webRoot, logger = console
           "set-cookie",
           `gcc_session=${encodeURIComponent(login.id)}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${login.maxAge}${controlConfig.publicAccessEnabled ? "; Secure" : ""}`,
         );
-        return sendJson(response, 200, { authenticated: true, csrfToken: login.csrf });
+        return sendJson(response, 200, { authenticated: true, csrfToken: login.csrf, mode: "session" });
       }
       if (request.method === "GET" && url.pathname === "/api/v1/session") {
         const identity = requireIdentity(request, response, auth, "operator");
@@ -67,11 +67,11 @@ function createControlServer({ controlConfig, service, webRoot, logger = console
         if (!controlConfig.haiConnectorEnabled) return sendJson(response, 404, { code: "NOT_FOUND", message: "HAI connector is disabled." });
         const identity = requireIdentity(request, response, auth, "hai");
         if (!identity) return;
-        if (request.method !== "POST") {
-          response.setHeader("allow", "POST");
-          return sendJson(response, 405, { code: "METHOD_NOT_ALLOWED", message: "Use POST for MCP requests." });
+        if (!["GET", "POST", "DELETE"].includes(request.method)) {
+          response.setHeader("allow", "GET, POST, DELETE");
+          return sendJson(response, 405, { code: "METHOD_NOT_ALLOWED", message: "Unsupported MCP request method." });
         }
-        return mcp.handle(request, response, await readJson(request));
+        return mcp.handle(request, response, request.method === "POST" ? await readJson(request) : undefined);
       }
 
       if (url.pathname.startsWith("/api/")) {
@@ -175,7 +175,11 @@ async function readJson(request) {
 function serveStatic(request, response, root, pathname) {
   const requested = pathname === "/" ? "index.html" : pathname.replace(/^\/+/, "");
   let file = safeStaticPath(root, requested);
-  if (!file || !fs.existsSync(file) || fs.statSync(file).isDirectory()) {
+  if (!file) return sendJson(response, 404, { code: "NOT_FOUND", message: "Static path not found." });
+  if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) {
+    if (path.extname(requested)) {
+      return sendJson(response, 404, { code: "NOT_FOUND", message: "Static asset not found." });
+    }
     file = path.join(root, "index.html");
   }
   if (!fs.existsSync(file)) {
@@ -198,6 +202,7 @@ function serveStatic(request, response, root, pathname) {
 function safeStaticPath(root, requested) {
   try {
     const decoded = decodeURIComponent(requested);
+    if (decoded.includes("\0")) return null;
     const resolved = path.resolve(root, decoded);
     return resolved === root || resolved.startsWith(`${root}${path.sep}`) ? resolved : null;
   } catch {

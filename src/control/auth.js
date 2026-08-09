@@ -28,7 +28,8 @@ function createAuth(controlConfig, now = () => Date.now()) {
   }
 
   function login(request, token) {
-    const key = clientKey(request);
+    pruneAttempts();
+    const key = clientKey(request, controlConfig.trustProxy);
     const state = attempts.get(key) || { count: 0, resetAt: now() + 60000 };
     if (state.resetAt <= now()) {
       state.count = 0;
@@ -75,6 +76,13 @@ function createAuth(controlConfig, now = () => Date.now()) {
     while (sessions.size >= 100) sessions.delete(sessions.keys().next().value);
   }
 
+  function pruneAttempts() {
+    for (const [key, state] of attempts) {
+      if (state.resetAt <= now()) attempts.delete(key);
+    }
+    while (attempts.size >= 1000) attempts.delete(attempts.keys().next().value);
+  }
+
   return { authenticate, login, logout, validCsrf, isSafeLocalRequest };
 }
 
@@ -112,8 +120,11 @@ function parseCookies(header) {
   }, {});
 }
 
-function clientKey(request) {
-  return String(request.headers["x-forwarded-for"] || request.socket.remoteAddress || "unknown")
+function clientKey(request, trustProxy) {
+  const address = trustProxy
+    ? request.headers["x-forwarded-for"] || request.socket.remoteAddress
+    : request.socket.remoteAddress;
+  return String(address || "unknown")
     .split(",")[0]
     .trim();
 }

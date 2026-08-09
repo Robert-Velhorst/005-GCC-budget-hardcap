@@ -28,8 +28,8 @@ if (-not (Test-Path -LiteralPath $localEnvironment)) {
     Copy-Item -LiteralPath (Join-Path $root '.env.example') -Destination $localEnvironment
 }
 
-if (-not $SkipInstall) { & npm.cmd ci; if ($LASTEXITCODE -ne 0) { throw 'npm ci failed.' } }
-& npm.cmd run build:web
+if (-not $SkipInstall) { Invoke-Npm ci; if ($LASTEXITCODE -ne 0) { throw 'npm ci failed.' } }
+Invoke-Npm run build:web
 if ($LASTEXITCODE -ne 0) { throw 'The web build failed.' }
 
 Write-Host 'Local setup is ready.'

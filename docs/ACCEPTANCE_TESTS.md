@@ -5,15 +5,17 @@
 | Scenario | Command | Expected | Current result |
 | --- | --- | --- | --- |
 | Syntax | `npm run lint` | All JavaScript parses | Passed |
-| Unit/integration | `npm test` | All tests pass | Passed, 58 tests |
-| Coverage | `npm run test:coverage` | >=85 lines, >=80 functions, >=75 branches | Passed: 89.31 / 86.63 / 80.61 |
+| Unit/integration | `npm test` | All tests pass | Passed, 65 tests |
+| Coverage | `npm run test:coverage` | >=85 lines, >=80 functions, >=75 branches | Passed: 90.73 / 87.38 / 80.64 |
 | Test-only critical path | `npm run smoke` | One read-only stop plan | Passed |
 | Web production build | `npm run build:web` | Production assets compile | Passed |
-| Browser workflow | Playwright desktop/mobile | No errors/overflow; policy API persists | Passed |
+| Browser workflow | Playwright desktop/mobile | No unexpected errors/overflow; login, policy, preview, logout work | Passed at 1440x1000 and 390x844 |
 | Windows setup/launch | PowerShell 5.1 with Node 24 | Restricted secrets and healthy loopback app | Passed |
+| Portable Windows release | `npm run build:windows` | Bundled runtime; no state/secrets in ZIP | Passed, 57.13 MiB ZIP and verified SHA-256 |
 | MCP connector | Protocol initialize/list/call | Separate HAI bearer and read-only tools | Passed |
 | Dependency audit | `npm audit --audit-level=moderate` | No findings at threshold | Passed |
-| Container build | `docker build .` | Native SQLite compiles and image runs non-root | Tooling defect fixed; final build timed out under concurrent Docker load |
+| Control container | `docker build .` plus runtime probe | Native SQLite, non-root health/session/API | Passed, 100,526,874 bytes |
+| Function container | `docker build -f Dockerfile.function .` plus health probe | Minimal non-root Node 22 function runtime | Passed, 87,782,484 bytes |
 | Compose configuration | `docker compose config --quiet` | Configuration resolves on Windows | Passed |
 | Terraform validation | `terraform validate` | Valid configuration | Passed with Terraform 1.14.3 |
 

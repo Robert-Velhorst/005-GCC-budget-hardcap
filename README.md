@@ -46,6 +46,14 @@ Setup creates `.env.local`, generates separate operator and HAI tokens under `.r
 
 Authenticate Google Cloud read-only provider access with Application Default Credentials, then set the real `PROJECT_ID`. Without credentials, the UI reports setup required and does not invent spend or instance data.
 
+To build a portable x64 release that includes a supported Node runtime:
+
+```powershell
+npm run build:windows
+```
+
+The resulting ZIP and SHA-256 file are written under `dist`. The archive contains no generated token, environment file, credential, database, or log. After extraction, `Start GCC Budget Hardcap.cmd` creates account-restricted local secrets on first launch; no separate Node.js installation is needed.
+
 For authenticated public access through ngrok:
 
 ```powershell
@@ -114,6 +122,7 @@ PROJECT_ID=your-project-id npm run doctor -- --provider
 | `NOTIFICATION_TOPIC` | empty | Optional operator notification topic |
 | `CONTROL_HOST/PORT` | `127.0.0.1:8787` | Local control-plane listener |
 | `LOCAL_DATABASE_PATH` | `.runtime/budget-hardcap.db` | Local SQLite audit and settings database |
+| `CONTROL_AUDIT_SOURCE` | `local` | Read audit history from local SQLite or deployed-worker Firestore |
 | `PUBLIC_ACCESS_ENABLED` | `false` | Require authenticated public-mode behavior |
 | `CONTROL_PLANE_TOKEN` | empty | Operator bearer/login token; generated locally |
 | `HAI_CONNECTOR_ENABLED` | `false` | Enable read-only MCP endpoint |
@@ -132,6 +141,8 @@ terraform apply budget-hardcap.tfplan
 ```
 
 Keep the first deployment at `execution_mode = "plan"` and `automation_enabled = false`. Connect the emitted Pub/Sub topic to the intended Cloud Billing budget, label a disposable test VM, publish a real budget test notification, and inspect structured logs. Only then change both execution controls.
+
+The control and function Dockerfiles use separately locked runtime manifests. The control image excludes Functions Framework; the function image excludes SQLite, MCP, React, and Vite. Google Compute and Pub/Sub calls use small authenticated REST adapters rather than the generated umbrella client.
 
 If a default Firestore database already exists, set `create_firestore_database = false`. Terraform state and plans are ignored and must be stored in an access-controlled remote backend for team use.
 
@@ -155,6 +166,6 @@ The disabled-by-default `/mcp` endpoint exposes only `get_budget_hardcap_status`
 - Budget notifications are not real-time hard spending caps; Google documents delivery delay and costs may continue to accrue.
 - Compute start/stop calls are long-running. Poll timeouts remain auditable `SUBMITTED` operations and are resumed on redelivery or reviewed with the reconciliation command.
 - A live Google Cloud deployment and destructive disposable-VM acceptance test require the operator's project, billing budget, credentials, and approval. They are not simulated as completed.
-- The local SQLite database is intentionally separate from the cloud worker's Firestore audit; it does not mirror or claim to synchronize cloud history.
+- Local settings always remain in SQLite. Audit reads default to SQLite and can explicitly use the deployed worker's Firestore records with `CONTROL_AUDIT_SOURCE=firestore`; an unavailable cloud audit is shown as unavailable rather than as zero history.
 - A live Google Cloud destructive test and durable ngrok endpoint require operator-owned accounts and explicit acceptance. Repository verification does not substitute for either.
 - There is no upload surface, autonomous AI action, or SaaS billing surface.

@@ -17,7 +17,7 @@ if (-not $env:CONTROL_PORT) { $env:CONTROL_PORT = '8787' }
 Assert-LocalPortAvailable -Port ([int]$env:CONTROL_PORT)
 
 if (-not (Test-Path -LiteralPath (Join-Path $root 'web\dist\index.html'))) {
-    & npm.cmd run build:web
+    Invoke-Npm run build:web
     if ($LASTEXITCODE -ne 0) { throw 'The web build failed.' }
 }
 

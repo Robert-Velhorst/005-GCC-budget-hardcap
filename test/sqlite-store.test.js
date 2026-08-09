@@ -24,7 +24,9 @@ test("SQLite store persists idempotent event and terminal action lifecycles", as
     instanceKey: "europe-west4-a/vm-1", instanceName: "vm-1", zone: "europe-west4-a", requestId: "request-1",
   };
   const actionId = await store.recordActionIntent(record, now);
+  assert.deepEqual(await store.getStats(), { eventCount: 1, actionCount: 1, failedActions: 0, pendingActions: 1 });
   await store.recordActionSubmitted(actionId, { ...record, operationName: "op-1", operationId: "10", operationStatus: "PENDING" }, now);
+  assert.equal((await store.getStats()).pendingActions, 1);
   assert.equal((await store.listPendingActions("event-1"))[0].operationName, "op-1");
   await store.recordActionCompleted(actionId, { ...record, operationName: "op-1", operationId: "10", operationStatus: "DONE" }, now);
   await store.completeEvent("event-1", { status: "COMPLETED" }, now);
@@ -32,7 +34,7 @@ test("SQLite store persists idempotent event and terminal action lifecycles", as
   assert.deepEqual(await store.claimEvent(eventRecord, new Date(now.getTime() + 1000)), { claimed: false, reason: "COMPLETED" });
   assert.equal((await store.listActions())[0].status, "COMPLETED");
   assert.equal((await store.listRecoverableInstances(appConfig.projectId, now))[0].instanceName, "vm-1");
-  assert.deepEqual(await store.getStats(), { events: 1, actions: 1, failedActions: 0, pendingActions: 0 });
+  assert.deepEqual(await store.getStats(), { eventCount: 1, actionCount: 1, failedActions: 0, pendingActions: 0 });
 });
 
 test("SQLite settings survive restart and retention removes only expired audit rows", async (t) => {
@@ -48,4 +50,27 @@ test("SQLite settings survive restart and retention removes only expired audit r
   t.after(() => { store.close(); fs.rmSync(directory, { recursive: true, force: true }); });
   assert.deepEqual(await store.getSetting("policy"), { executionMode: "plan" });
   assert.deepEqual(await store.cleanupExpired(new Date(now.getTime() + 2 * 86400000)), { events: 1, actions: 0 });
+});
+
+test("SQLite stats match cloud audit lifecycle semantics", async (t) => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "gcc-store-"));
+  const appConfig = { ...config(), databasePath: path.join(directory, "audit.db") };
+  const store = createSqliteStore(appConfig);
+  t.after(() => { store.close(); fs.rmSync(directory, { recursive: true, force: true }); });
+  const now = new Date("2026-08-09T10:00:00.000Z");
+  const record = {
+    eventId: "event-stats", projectId: appConfig.projectId, action: "stop",
+    instanceKey: "europe-west4-a/vm-stats", instanceName: "vm-stats", zone: "europe-west4-a",
+    requestId: "request-stats",
+  };
+
+  await store.claimEvent({ eventId: record.eventId, projectId: appConfig.projectId }, now);
+  const actionId = await store.recordActionIntent(record, now);
+  assert.equal((await store.getStats()).pendingActions, 1);
+  await store.recordActionFailed(actionId, {
+    ...record, retryable: true, errorCode: "PROVIDER_UNAVAILABLE", errorMessage: "offline",
+  }, now);
+  assert.deepEqual(await store.getStats(), {
+    eventCount: 1, actionCount: 1, failedActions: 1, pendingActions: 0,
+  });
 });

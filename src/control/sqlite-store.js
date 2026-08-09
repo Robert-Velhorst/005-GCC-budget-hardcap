@@ -339,10 +339,10 @@ function prepareStatements(db) {
     `),
     stats: db.prepare(`
       SELECT
-        (SELECT COUNT(*) FROM events) AS events,
-        (SELECT COUNT(*) FROM actions) AS actions,
-        (SELECT COUNT(*) FROM actions WHERE status='FAILED') AS failedActions,
-        (SELECT COUNT(*) FROM actions WHERE status='SUBMITTED') AS pendingActions
+        (SELECT COUNT(*) FROM events) AS eventCount,
+        (SELECT COUNT(*) FROM actions) AS actionCount,
+        (SELECT COUNT(*) FROM actions WHERE status IN ('FAILED', 'FAILED_RETRYABLE')) AS failedActions,
+        (SELECT COUNT(*) FROM actions WHERE status IN ('INTENT_RECORDED', 'SUBMITTED')) AS pendingActions
     `),
     deleteExpiredEvents: db.prepare("DELETE FROM events WHERE expires_at < ?"),
     deleteExpiredActions: db.prepare("DELETE FROM actions WHERE expires_at < ?"),
