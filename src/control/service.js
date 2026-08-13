@@ -96,7 +96,7 @@ function createControlService({ appConfig, controlConfig, store, compute, now } 
         actions: audit.actions,
         events: audit.events.slice(0, 20),
         stats: audit.stats,
-        integrations: integrations(controlConfig, provider, audit),
+        integrations: integrations(controlConfig, provider, audit, config),
       };
     },
 
@@ -227,14 +227,14 @@ function describeInstance(instance, config) {
     protected: protectedInstance,
     eligible: managed && !protectedInstance && allowedZone && !excluded,
     scopeReason: !managed
-      ? "Missing managed label"
+      ? "Not under budget protection"
       : protectedInstance
-        ? "Protected"
+        ? "Marked never stop"
         : !allowedZone
-          ? "Zone excluded"
+          ? "Location not allowed"
           : excluded
-            ? "Instance excluded"
-            : "Eligible",
+            ? "Explicitly excluded"
+            : "May stop at threshold",
   };
 }
 
@@ -261,7 +261,7 @@ function summarizeBudget(events, config) {
   };
 }
 
-function integrations(controlConfig, provider, audit) {
+function integrations(controlConfig, provider, audit, config) {
   const values = [
     { id: "google-cloud", name: "Google Cloud", state: provider.state, detail: provider.error?.message || "Compute API connected" },
     {
@@ -281,6 +281,12 @@ function integrations(controlConfig, provider, audit) {
       name: "HAI",
       state: controlConfig.haiConnectorEnabled ? "configured" : "disabled",
       detail: controlConfig.haiConnectorEnabled ? "Read-only MCP context" : "Connector disabled",
+    },
+    {
+      id: "notifications",
+      name: "Notifications",
+      state: config.notificationTopic ? "configured" : "disabled",
+      detail: config.notificationTopic ? "Action and failure alerts configured" : "No alert destination configured",
     },
   ];
   if (audit.source === "firestore") {

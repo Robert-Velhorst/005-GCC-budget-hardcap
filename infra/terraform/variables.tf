@@ -47,9 +47,9 @@ variable "automation_enabled" {
 }
 
 variable "enable_automatic_recovery" {
-  description = "Allow recovery only for VMs this automation recorded as stopped."
+  description = "Automatically restart only selected VMs this automation recorded as stopped."
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "budget_limit" {

@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Made automatic restart part of the default approved protection flow while retaining plan mode, the emergency switch, the recovery delay, current selection checks, and stop-ownership requirements.
+- Clarified the dashboard around all discovered cloud computers, selected budget protection, never-stop safety, and notification status.
+- Added regression coverage proving unselected, no-longer-selected, protected, and non-owned computers cannot be restarted.
+
 ## 3.0.0 - 2026-08-09
 
 - Added a responsive React operator dashboard backed by a native authenticated control API.

@@ -19,11 +19,11 @@ test("uses the absolute fallback limit without a budget amount", () => {
   );
 });
 
-test("recovery is explicit and otherwise produces no action", () => {
+test("recovery is the default below budget and can be disabled explicitly", () => {
   const event = { costAmount: 50, budgetAmount: 100 };
-  assert.equal(evaluateBudgetPolicy(event, config()).decision, DECISIONS.NO_ACTION);
+  assert.equal(evaluateBudgetPolicy(event, config()).decision, DECISIONS.RECOVER);
   assert.equal(
-    evaluateBudgetPolicy(event, config({ ENABLE_AUTOMATIC_RECOVERY: "true" })).decision,
-    DECISIONS.RECOVER,
+    evaluateBudgetPolicy(event, config({ ENABLE_AUTOMATIC_RECOVERY: "false" })).decision,
+    DECISIONS.NO_ACTION,
   );
 });

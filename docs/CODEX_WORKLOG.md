@@ -39,3 +39,11 @@ External work remaining at that checkpoint: live Google Cloud disposable-VM acce
 - Passed 65 tests, enforced coverage, production build, smoke, dependency audits, container runtime checks, portable runtime checks, and desktop/mobile browser workflows.
 
 External work remaining: approved live Google Cloud disposable-VM acceptance and owner resolution of the already-online ngrok endpoint. The repository cannot safely stop or pool with an endpoint owned by another running process.
+
+## 2026-08-13 - owner product alignment
+
+- Confirmed the non-technical product contract: discover all cloud computers, protect only selected computers, preview before approval, then stop and restart automatically.
+- Made audit-owned automatic restart the default while retaining plan mode, the emergency switch, recovery delay, current selection, never-stop, state, zone, exclusion, and action-cap safeguards.
+- Updated dashboard language to distinguish all discovered computers from selected budget-protected computers and added notification configuration status.
+- Passed 66 tests and coverage, production build, smoke, Terraform and Compose checks, three dependency audits, non-root container runtime checks, desktop/mobile browser QA, and portable Windows runtime verification.
+- Rebuilt the 57.13 MiB Windows x64 ZIP with bundled Node 24.14; SHA-256 `cedcf8d57e53f4f21f551c70165acd7dd936f3fe193108b001fd033c191a4eee`.

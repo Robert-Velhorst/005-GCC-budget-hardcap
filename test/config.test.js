@@ -9,7 +9,7 @@ test("configuration defaults to fail-safe planning", () => {
   const config = readConfig({ PROJECT_ID: "project" });
   assert.equal(config.executionMode, "plan");
   assert.equal(config.automationEnabled, false);
-  assert.equal(config.enableAutomaticRecovery, false);
+  assert.equal(config.enableAutomaticRecovery, true);
   assert.equal(config.managedLabelKey, "budget-hardcap");
 });
 
@@ -36,6 +36,11 @@ test("configuration rejects invalid booleans, numbers, and labels", () => {
   assert.throws(() => readConfig({ PROJECT_ID: "p", OPERATION_TIMEOUT_SECONDS: "5" }));
   assert.throws(() => readConfig({ PROJECT_ID: "p", AUDIT_RETENTION_DAYS: "0" }));
   assert.throws(() => readConfig({ PROJECT_ID: "p", MANAGED_LABEL_KEY: "INVALID" }));
+});
+
+test("automatic restart can still be disabled explicitly", () => {
+  const config = readConfig({ PROJECT_ID: "project", ENABLE_AUTOMATIC_RECOVERY: "false" });
+  assert.equal(config.enableAutomaticRecovery, false);
 });
 
 test("public configuration includes operator policy and excludes persistence details", () => {

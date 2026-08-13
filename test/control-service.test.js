@@ -15,7 +15,11 @@ test("control service reports live, scoped provider data without inventing spend
     compute: {
       async getProject() { return { id: "1", name: appConfig.projectId }; },
       async listInstances() {
-        return [instance("managed"), instance("protected", "RUNNING", { labels: { "budget-hardcap": "true", "budget-hardcap-protected": "true" } })];
+        return [
+          instance("managed"),
+          instance("protected", "RUNNING", { labels: { "budget-hardcap": "true", "budget-hardcap-protected": "true" } }),
+          instance("visible-unselected", "RUNNING", { labels: {} }),
+        ];
       },
     },
     now: () => new Date("2026-08-09T10:00:00.000Z"),
@@ -24,8 +28,12 @@ test("control service reports live, scoped provider data without inventing spend
   assert.equal(overview.provider.state, "connected");
   assert.equal(overview.provider.instances[0].eligible, true);
   assert.equal(overview.provider.instances[1].protected, true);
+  assert.equal(overview.provider.instances.length, 3);
+  assert.equal(overview.provider.instances[2].managed, false);
+  assert.equal(overview.provider.instances[2].scopeReason, "Not under budget protection");
   assert.equal(overview.budget.state, "empty");
   assert.equal(overview.integrations.find((item) => item.id === "local-database").state, "connected");
+  assert.equal(overview.integrations.find((item) => item.id === "notifications").state, "disabled");
 });
 
 test("control service caches provider reads and exposes bounded HAI context", async () => {

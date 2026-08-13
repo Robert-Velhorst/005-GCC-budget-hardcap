@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState, useTransition } from "react"
 import {
   Activity,
   AlertTriangle,
+  Bell,
   Check,
   CircleDollarSign,
   Cloud,
@@ -170,7 +171,7 @@ function StatusStrip({ overview }) {
     <div className="status-strip">
       <Metric label="Spend" value={ratio == null ? "No data" : `${ratio}%`} detail={budget.latest ? formatMoney(budget.latest.costAmount, budget.latest.currencyCode) : "Waiting for budget event"} />
       <Metric label="Threshold" value={`${Math.round(policy.thresholdRatio * 100)}%`} detail={formatMoney(budget.thresholdAmount, policy.expectedCurrency)} />
-      <Metric label="Policy state" value={withinBudget ? "Within budget" : "Threshold reached"} detail={`${capitalize(policy.executionMode)} mode`} tone={withinBudget ? "safe" : "danger"} />
+      <Metric label="Protection state" value={withinBudget ? "Within budget" : "Threshold reached"} detail={`${capitalize(policy.executionMode)} mode`} tone={withinBudget ? "safe" : "danger"} />
       <Metric label="Last event" value={auditUnavailable ? "Unavailable" : latestEvent ? formatDate(latestEvent.updatedAt) : "None received"} detail={auditUnavailable ? "Audit source could not be read" : latestEvent?.status || "Audit is empty"} />
       <Metric label="Pending" value={auditUnavailable ? "Unknown" : String(overview.stats.pendingActions)} detail={auditUnavailable ? "Audit source unavailable" : `${overview.stats.failedActions} failed actions`} />
     </div>
@@ -269,16 +270,16 @@ function InstancesSection({ overview }) {
   return (
     <section id="instances" className="panel data-panel" aria-labelledby="instances-title">
       <div className="panel-heading table-heading">
-        <div><h2 id="instances-title">Compute instances</h2><p>{overview.provider.state === "connected" ? `${overview.provider.instances.length} provider records` : overview.provider.error?.message || "Provider is not connected."}</p></div>
+        <div><h2 id="instances-title">Cloud computers</h2><p>{overview.provider.state === "connected" ? `${overview.provider.instances.length} computers found` : overview.provider.error?.message || "Google Cloud is not connected."}</p></div>
         <div className="table-tools">
-          <label className="search-field"><Search aria-hidden="true" /><span className="sr-only">Search instances</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search instances" /></label>
+          <label className="search-field"><Search aria-hidden="true" /><span className="sr-only">Search cloud computers</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search computers" /></label>
           <select aria-label="Filter by state" value={state} onChange={(event) => setState(event.target.value)}><option value="all">All states</option><option value="RUNNING">Running</option><option value="TERMINATED">Stopped</option></select>
         </div>
       </div>
       {overview.provider.state !== "connected" ? <EmptyState icon={Cloud} title="Google Cloud setup required" detail="Authenticate Application Default Credentials and verify the configured project to load live instances." /> : instances.length === 0 ? <EmptyState icon={Server} title="No matching instances" detail="Change the filters or label instances for budget hardcap management." /> : (
         <div className="table-scroll">
-          <table><thead><tr><th>VM name</th><th>Zone</th><th>State</th><th>Scope</th><th>Protection</th></tr></thead>
-            <tbody>{instances.map((instance) => <tr key={`${instance.zone}/${instance.name}`}><td><span className={`state-dot ${instance.status === "RUNNING" ? "connected" : "neutral"}`} />{instance.name}</td><td>{instance.zone}</td><td>{humanState(instance.status)}</td><td>{instance.managed ? "Managed" : "Unmanaged"}</td><td className={instance.protected ? "safe-text" : "muted"}>{instance.protected ? "Protected" : instance.scopeReason}</td></tr>)}</tbody>
+          <table><thead><tr><th>Computer name</th><th>Location</th><th>State</th><th>Budget protection</th><th>Safety</th></tr></thead>
+            <tbody>{instances.map((instance) => <tr key={`${instance.zone}/${instance.name}`}><td><span className={`state-dot ${instance.status === "RUNNING" ? "connected" : "neutral"}`} />{instance.name}</td><td>{instance.zone}</td><td>{humanState(instance.status)}</td><td>{instance.managed ? "Selected" : "Not selected"}</td><td className={instance.protected ? "safe-text" : "muted"}>{instance.protected ? "Never stop" : instance.scopeReason}</td></tr>)}</tbody>
           </table>
         </div>
       )}
@@ -298,7 +299,7 @@ function ActionsSection({ actions, audit }) {
 }
 
 function IntegrationsSection({ integrations }) {
-  const iconMap = { "google-cloud": Cloud, "cloud-audit": Cloud, "local-database": Database, ngrok: ExternalLink, hai: Link2 };
+  const iconMap = { "google-cloud": Cloud, "cloud-audit": Cloud, "local-database": Database, ngrok: ExternalLink, hai: Link2, notifications: Bell };
   return (
     <section id="integrations" className="panel integrations" aria-labelledby="integrations-title">
       <div className="panel-heading"><div><h2 id="integrations-title">Integrations</h2><p>Configured and live are reported separately</p></div><Link2 aria-hidden="true" /></div>
@@ -345,10 +346,10 @@ function PolicyPanel({ policy, onSaved }) {
       <div className="policy-heading"><Shield aria-hidden="true" /><div><h2 id="policy-title">Policy</h2><p>{policy.projectId}</p></div></div>
       <fieldset><legend>Mode</legend><div className="segmented"><button type="button" className={draft.executionMode === "plan" ? "selected" : ""} onClick={() => update("executionMode", "plan")}>Plan</button><button type="button" className={draft.executionMode === "execute" ? "selected danger-choice" : ""} onClick={() => update("executionMode", "execute")}>Execute</button></div><small>Plan mode never mutates Compute Engine.</small></fieldset>
       <Toggle label="Automation" detail="Allow budget events to submit scoped actions." checked={draft.automationEnabled} onChange={(value) => update("automationEnabled", value)} />
-      <Toggle label="Automatic recovery" detail="Restart only audit-owned stopped instances." checked={draft.enableAutomaticRecovery} onChange={(value) => update("enableAutomaticRecovery", value)} />
+      <Toggle label="Automatic restart" detail="Restart only selected computers this tool successfully stopped." checked={draft.enableAutomaticRecovery} onChange={(value) => update("enableAutomaticRecovery", value)} />
       <fieldset><legend>Threshold</legend><label className="numeric-field"><span>Budget ratio</span><div><input type="number" min="0.01" max="10" step="0.01" value={draft.thresholdRatio} onChange={(event) => update("thresholdRatio", event.target.value)} /><span>x</span></div></label><label className="numeric-field"><span>Maximum actions</span><div><input type="number" min="1" max="100" step="1" value={draft.maxActionsPerEvent} onChange={(event) => update("maxActionsPerEvent", event.target.value)} /></div></label></fieldset>
       {draft.executionMode === "execute" ? <label className="confirmation"><span>Confirm live mode</span><input value={confirmation} onChange={(event) => setConfirmation(event.target.value)} placeholder="ENABLE EXECUTION" autoComplete="off" /><small>Required every time execute mode is applied.</small></label> : null}
-      <div className="review-summary"><h3>Review summary</h3><dl><div><dt>Mode</dt><dd>{capitalize(draft.executionMode)}</dd></div><div><dt>Automation</dt><dd>{draft.automationEnabled ? "Enabled" : "Disabled"}</dd></div><div><dt>Recovery</dt><dd>{draft.enableAutomaticRecovery ? "Enabled" : "Disabled"}</dd></div><div><dt>Scope</dt><dd>{policy.allowedZones.length} zones</dd></div></dl></div>
+      <div className="review-summary"><h3>Review summary</h3><dl><div><dt>Mode</dt><dd>{capitalize(draft.executionMode)}</dd></div><div><dt>Automation</dt><dd>{draft.automationEnabled ? "Enabled" : "Disabled"}</dd></div><div><dt>Automatic restart</dt><dd>{draft.enableAutomaticRecovery ? "Enabled" : "Disabled"}</dd></div><div><dt>Locations</dt><dd>{policy.allowedZones.length}</dd></div></dl></div>
       {message ? <p className={`${message.tone}-message`} role="status">{message.text}</p> : null}
       <button className="primary-button" type="button" onClick={() => void save()} disabled={saving}>{saving ? <LoaderCircle className="spin" /> : <Check />}Apply local policy</button>
       <p className="policy-footnote">Cloud function settings remain controlled by Terraform and require a separate reviewed deployment.</p>

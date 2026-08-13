@@ -14,7 +14,7 @@
 | --- | --- |
 | Every VM was selected regardless of status | Status, label, protection, zone, and exclusion filters |
 | Project and threshold were hard-coded | Validated environment configuration |
-| Under-budget messages restarted all stopped VMs | Recovery is opt-in and audit-backed |
+| Under-budget messages restarted all stopped VMs | Restart requires current selection, recorded stop ownership, terminated state, and a safety delay |
 | Errors were swallowed | Errors are classified, audited, logged, and rethrown |
 | Duplicate Pub/Sub delivery could repeat actions | Firestore claims plus deterministic Compute request IDs |
 | API acceptance was logged as success | Submitted operations are polled; only successful `DONE` becomes `COMPLETED` |
@@ -24,7 +24,7 @@
 | Retention existed only in prose | Event/action expiry timestamps and Terraform TTL field policies |
 | Broad IAM guidance | Terraform custom role with list/get/start/stop/project-get only |
 | Unauthenticated deployment guidance | Authenticated Eventarc Pub/Sub trigger; no public invoker grant |
-| No tests or reproducible install | Lockfiles, Node 22 CI, 65 tests, coverage gate, dependency audit |
+| No tests or reproducible install | Lockfiles, Node 22 CI, 66 tests, coverage gate, dependency audit |
 | No operator surface or local persistence | Authenticated API, responsive dashboard, SQLite WAL, migrations, retention |
 | Provider calls could hang the dashboard | Request deadlines, bounded probe timeout, cached/in-flight provider reads |
 | Generated Google clients inflated installs and cold starts | Fixed-host authenticated REST adapters for Compute and Pub/Sub |

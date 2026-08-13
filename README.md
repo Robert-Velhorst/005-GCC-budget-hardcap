@@ -2,7 +2,7 @@
 
 A fail-safe Google Cloud budget control system with a Cloud Function worker and a local operator control plane. The worker consumes Billing budget notifications and submits tightly scoped Compute Engine actions. The Windows/web control plane provides truthful provider status, audited event/action history, review-gated local policy, and read-only HAI context.
 
-The service starts in read-only `plan` mode. Production execution is impossible until the operator explicitly enables it and supplies budget, currency, and zone allowlists. It never manages an unlabelled VM, never restarts a VM it did not record as stopped, and persists event/action history in Firestore before changing cloud state.
+The service starts in read-only `plan` mode. Production execution is impossible until the operator explicitly enables it and supplies budget, currency, and zone allowlists. The dashboard discovers every cloud computer in the project, but automatic protection applies only to computers selected with the budget-hardcap label. It never restarts a computer it did not record as stopped and persists event/action history in Firestore before changing cloud state.
 
 ## Safety model
 
@@ -14,7 +14,7 @@ The service starts in read-only `plan` mode. Production execution is impossible 
 - Deterministic Compute `requestId` values protect retries from duplicate provider actions.
 - Submitted Compute operations are polled to terminal success; timed-out polls resume on event retry without resubmitting the action.
 - A cooldown, maximum action count, action delay, and stale-event limit constrain blast radius.
-- Recovery is disabled by default and only targets `TERMINATED` VMs previously recorded as stopped by this service.
+- Automatic restart is enabled in the default policy but cannot change anything while plan mode or the emergency automation switch is active. It targets only selected `TERMINATED` VMs previously recorded as successfully stopped by this service, after the recovery delay.
 - Provider failures are rethrown so Eventarc/Pub/Sub retry policy can act.
 
 ## Workflow
@@ -114,7 +114,7 @@ PROJECT_ID=your-project-id npm run doctor -- --provider
 | `COOLDOWN_SECONDS` | `300` | Repeated-decision cooldown |
 | `MAX_EVENT_AGE_SECONDS` | `86400` | Reject stale budget events |
 | `EVENT_LEASE_SECONDS` | `600` | Event-processing lease |
-| `ENABLE_AUTOMATIC_RECOVERY` | `false` | Enable audit-backed restart policy |
+| `ENABLE_AUTOMATIC_RECOVERY` | `true` | Automatically restart only selected VMs this service stopped |
 | `RECOVERY_DELAY_SECONDS` | `3600` | Minimum time before recovery |
 | `FIRESTORE_DATABASE_ID` | `(default)` | Firestore database |
 | `FIRESTORE_PREFIX` | `budgetHardcap` | Collection prefix |

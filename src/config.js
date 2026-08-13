@@ -16,7 +16,7 @@ function readConfig(env = process.env) {
     automationEnabled: parseBoolean(env.AUTOMATION_ENABLED, false, "AUTOMATION_ENABLED"),
     enableAutomaticRecovery: parseBoolean(
       env.ENABLE_AUTOMATIC_RECOVERY,
-      false,
+      true,
       "ENABLE_AUTOMATIC_RECOVERY",
     ),
     budgetLimit: parseNumber(env.BUDGET_LIMIT, 10, "BUDGET_LIMIT", { minExclusive: 0 }),

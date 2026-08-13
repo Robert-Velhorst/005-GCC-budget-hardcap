@@ -13,7 +13,7 @@ The protected assets are Compute Engine availability, billing-control integrity,
 | Duplicate delivery | Firestore claim/lease, terminal event states, deterministic Compute request UUID |
 | Stale alert changes current infrastructure | Maximum event age and future-time validation |
 | Retry after ambiguous provider response | Persisted intent, idempotent request UUID, reconciliation queue |
-| Unauthorized recovery | Disabled by default; only audit-owned, terminated, delay-eligible VMs |
+| Unauthorized restart | Plan/emergency gates plus current selection, never-stop, audit ownership, terminated-state, and delay checks |
 | Compromised function identity | Custom role limited to get/list/start/stop plus Firestore/logging/Eventarc roles |
 | Secret leakage | Application Default Credentials, no credential variables, logger redaction, ignored env/runtime files |
 | Denial through large scope | Maximum actions, serialized requests, delay, cooldown, function max instances |

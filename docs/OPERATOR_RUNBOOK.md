@@ -13,15 +13,15 @@
 ## Initial rollout
 
 1. Review `terraform plan` and confirm project, region, budget names, currency, zones, topic, custom IAM role, and Firestore location.
-2. Deploy with `execution_mode = "plan"`, `automation_enabled = false`, and recovery disabled.
+2. Deploy with `execution_mode = "plan"`, `automation_enabled = false`, and automatic restart enabled. Plan mode and the emergency switch prevent all stop/start actions during review.
 3. Configure the Cloud Billing budget to publish to Terraform's `budget_topic` output.
 4. Label one disposable VM `budget-hardcap=true`. Never begin with production-critical VMs.
 5. Publish/trigger a real budget notification and confirm the plan lists only the disposable VM.
 6. Test rejection using the wrong budget name, currency, old timestamp, wrong zone, missing label, and protection label.
-7. Set `execution_mode = "execute"` while leaving `automation_enabled = false`; confirm deployment fails its readiness/config check as expected.
+7. Set `execution_mode = "execute"` while leaving `automation_enabled = false`; confirm the emergency switch prevents all provider actions.
 8. Obtain change approval, set `automation_enabled = true`, and perform the disposable-VM stop test.
 9. Confirm Firestore event/action/managed-instance records, Compute operation ID, and terminal `COMPLETED` state.
-10. Keep automatic recovery disabled until a separate start test is approved.
+10. After the configured recovery delay, publish an approved below-threshold notification and confirm only the same disposable VM is restarted. Confirm unselected and never-stop VMs remain untouched.
 
 ## Emergency stop
 

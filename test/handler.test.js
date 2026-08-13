@@ -102,20 +102,30 @@ test("action limits are acknowledged as non-retryable without provider changes",
   assert.equal(deps.store.actions.length, 0);
 });
 
-test("automatic recovery starts only a terminated VM recorded by this automation", async () => {
+test("automatic restart starts only a selected terminated VM recorded by this automation", async () => {
   const store = new MemoryStore();
-  store.managed.set("europe-west4-a/owned", {
-    projectId: "test-project",
-    instanceKey: "europe-west4-a/owned",
-    status: "STOP_COMPLETED",
-    stopCompletedAt: new Date("2026-08-08T09:00:00Z"),
-  });
+  for (const name of ["owned", "no-longer-selected", "protected", "too-recent"]) {
+    store.managed.set(`europe-west4-a/${name}`, {
+      projectId: "test-project",
+      instanceKey: `europe-west4-a/${name}`,
+      status: "STOP_COMPLETED",
+      stopCompletedAt: new Date(name === "too-recent" ? "2026-08-08T09:30:00Z" : "2026-08-08T09:00:00Z"),
+    });
+  }
   const deps = dependencies({
     store,
-    config: config({ ENABLE_AUTOMATIC_RECOVERY: "true" }),
+    config: config({ RECOVERY_DELAY_SECONDS: "3600" }),
     compute: {
       async listInstances() {
-        return [instance("owned", "TERMINATED"), instance("not-owned", "TERMINATED")];
+        return [
+          instance("owned", "TERMINATED"),
+          instance("not-owned", "TERMINATED"),
+          instance("no-longer-selected", "TERMINATED", { labels: {} }),
+          instance("protected", "TERMINATED", {
+            labels: { "budget-hardcap": "true", "budget-hardcap-protected": "true" },
+          }),
+          instance("too-recent", "TERMINATED"),
+        ];
       },
       async submitAction(action, target) {
         deps.calls.push({ action, target });
@@ -146,6 +156,7 @@ test("cooldown suppresses repeated decisions", async () => {
 test("below-budget events are completed without listing instances when recovery is disabled", async () => {
   let listed = false;
   const deps = dependencies({
+    config: config({ ENABLE_AUTOMATIC_RECOVERY: "false" }),
     compute: {
       async listInstances() {
         listed = true;

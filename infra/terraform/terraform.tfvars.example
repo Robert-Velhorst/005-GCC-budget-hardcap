@@ -9,6 +9,7 @@ provider_request_timeout_ms = 8000
 # First deployment must remain read-only.
 execution_mode    = "plan"
 automation_enabled = false
+enable_automatic_recovery = true
 
 # Set false if the project already has a default Firestore database.
 create_firestore_database = true
