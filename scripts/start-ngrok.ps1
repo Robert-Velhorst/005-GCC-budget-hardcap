@@ -24,8 +24,13 @@ $process = Start-Process -FilePath (Get-Command node).Source -ArgumentList 'src/
 try {
     Wait-LocalHealth -Port ([int]$env:CONTROL_PORT) -Process $process
     Write-Host 'The local service is healthy. ngrok will expose it with mandatory operator authentication.'
-    $arguments = @('http', "http://127.0.0.1:$($env:CONTROL_PORT)")
-    if ($Domain) { $arguments += "--domain=$Domain" }
+    $arguments = @('http', "http://127.0.0.1:$($env:CONTROL_PORT)", '--inspect=false')
+    if ($Domain) {
+        if ($Domain -notmatch '^[a-z0-9](?:[a-z0-9.-]{0,251}[a-z0-9])?$') {
+            throw 'Domain must be a valid lowercase hostname.'
+        }
+        $arguments += "--url=https://$Domain"
+    }
     & ngrok @arguments
     if ($LASTEXITCODE -ne 0) { throw "ngrok exited with code $LASTEXITCODE." }
 } finally {
