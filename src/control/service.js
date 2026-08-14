@@ -377,7 +377,6 @@ function withTimeout(promise, timeoutMs) {
       error.retryable = true;
       reject(error);
     }, timeoutMs);
-    timeout.unref?.();
   });
   return Promise.race([promise, deadline]).finally(() => clearTimeout(timeout));
 }
