@@ -7,7 +7,7 @@
     "node": ">=22 <25"
   },
   "dependencies": {
-    "@google-cloud/firestore": "8.7.1",
+    "@google-cloud/firestore": "9.0.0",
     "@google-cloud/functions-framework": "5.0.5",
     "google-auth-library": "10.5.0"
   },
