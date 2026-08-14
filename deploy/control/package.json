@@ -10,7 +10,7 @@
     "@google-cloud/firestore": "8.7.1",
     "@modelcontextprotocol/sdk": "1.30.0",
     "better-sqlite3": "13.0.1",
-    "google-auth-library": "10.5.0",
+    "google-auth-library": "11.0.1",
     "zod": "4.4.3"
   },
   "overrides": {
