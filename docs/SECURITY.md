@@ -40,3 +40,11 @@ Event and action records receive an `expiresAt` timestamp and Terraform enables 
 Dependencies are pinned and locked for development, the control runtime, and the function runtime. CI runs `npm ci` and `npm audit --audit-level=moderate`. Dependabot monitors all three npm manifests and GitHub Actions. The UUID override removes the currently reported transitive advisory and must be revalidated when Functions Framework updates.
 
 Report vulnerabilities privately to the repository owner. Do not include credentials, project data, or exploitable production details in public issues.
+
+## Supported versions
+
+Security reports for the current default branch and latest published release are in scope. Older versions may be affected and are not guaranteed to receive fixes.
+
+## Response and disclosure
+
+Reports are reviewed on a best-effort basis; no response or fix-time guarantee is provided. Coordinate public disclosure with the maintainers so users have a reasonable opportunity to receive a fix.
