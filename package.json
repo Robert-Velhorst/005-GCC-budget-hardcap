@@ -31,7 +31,7 @@
     "compute-engine",
     "cloud-functions"
   ],
-  "license": "AGPL-3.0-only",
+  "license": "ISC",
   "dependencies": {
     "@google-cloud/firestore": "8.7.1",
     "@google-cloud/functions-framework": "5.0.5",
