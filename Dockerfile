@@ -1,4 +1,4 @@
-FROM node:26.12.0-bookworm-slim AS build
+FROM node:24.22.0-bookworm-slim AS build
 
 WORKDIR /app
 COPY package.json package-lock.json ./
@@ -7,7 +7,7 @@ COPY vite.config.js ./
 COPY web ./web
 RUN npm run build:web
 
-FROM node:26.12.0-bookworm-slim AS production-dependencies
+FROM node:24.22.0-bookworm-slim AS production-dependencies
 
 WORKDIR /app
 RUN apt-get update \
@@ -16,7 +16,7 @@ RUN apt-get update \
 COPY deploy/control/package.json deploy/control/package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 
-FROM node:26.12.0-bookworm-slim AS runtime
+FROM node:24.22.0-bookworm-slim AS runtime
 
 ENV NODE_ENV=production \
     CONTROL_HOST=0.0.0.0 \
