@@ -1,22 +1,27 @@
-FROM node:22.18.0-bookworm-slim AS build
+FROM node:26.12.0-bookworm-slim@sha256:298992629d69bbd5b2b03ad57094d8e4fcb3a8eeb7c4e25d29de656519568913 AS build
+ARG NPM_VERSION=12.2.0
 
 WORKDIR /app
 COPY package.json package-lock.json ./
+RUN npm install --global "npm@${NPM_VERSION}"
 RUN npm ci --ignore-scripts
 COPY vite.config.js ./
 COPY web ./web
 RUN npm run build:web
 
-FROM node:22.18.0-bookworm-slim AS production-dependencies
+FROM node:26.12.0-bookworm-slim@sha256:298992629d69bbd5b2b03ad57094d8e4fcb3a8eeb7c4e25d29de656519568913 AS production-dependencies
+ARG NPM_VERSION=12.2.0
 
 WORKDIR /app
 RUN apt-get update \
     && apt-get install -y --no-install-recommends python3 make g++ \
     && rm -rf /var/lib/apt/lists/*
+RUN npm install --global "npm@${NPM_VERSION}"
 COPY deploy/control/package.json deploy/control/package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 
-FROM node:22.18.0-bookworm-slim AS runtime
+FROM node:26.12.0-bookworm-slim@sha256:298992629d69bbd5b2b03ad57094d8e4fcb3a8eeb7c4e25d29de656519568913 AS runtime
+ARG NPM_VERSION=12.2.0
 
 ENV NODE_ENV=production \
     CONTROL_HOST=0.0.0.0 \
@@ -29,6 +34,7 @@ COPY --from=production-dependencies /app/node_modules ./node_modules
 COPY index.js ./
 COPY src ./src
 COPY --from=build /app/web/dist ./web/dist
+RUN npm install --global "npm@${NPM_VERSION}"
 RUN mkdir /data && chown node:node /data
 
 USER node
