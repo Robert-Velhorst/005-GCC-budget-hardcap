@@ -1,9 +1,11 @@
 FROM node:26.12.0-bookworm-slim@sha256:298992629d69bbd5b2b03ad57094d8e4fcb3a8eeb7c4e25d29de656519568913
+ARG NPM_VERSION=12.2.0
 
 ENV NODE_ENV=production
 WORKDIR /app
 
 COPY deploy/function/package.json deploy/function/package-lock.json ./
+RUN npm install --global "npm@${NPM_VERSION}"
 RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
 COPY index.js ./
 COPY src ./src

@@ -1,6 +1,7 @@
 {
   "name": "gcc-budget-hardcap-control-runtime",
   "version": "3.0.0",
+  "packageManager": "npm@12.2.0",
   "private": true,
   "type": "commonjs",
   "engines": {
