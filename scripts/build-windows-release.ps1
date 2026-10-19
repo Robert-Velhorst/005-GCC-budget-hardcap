@@ -56,7 +56,6 @@ Copy-Item -LiteralPath $nodeExecutable -Destination (Join-Path $runtime 'node.ex
 Copy-Item -LiteralPath (Join-Path $root 'scripts\lib\Runtime.ps1') -Destination $scripts
 Copy-Item -LiteralPath (Join-Path $root 'windows\portable.ps1') -Destination $scripts
 Copy-Item -LiteralPath (Join-Path $root 'windows\Start GCC Budget Hardcap.cmd') -Destination $releaseRoot
-Copy-Item -LiteralPath (Join-Path $root 'windows\Start Public Tunnel.cmd') -Destination $releaseRoot
 Copy-Item -LiteralPath (Join-Path $root 'windows\README.txt') -Destination $releaseRoot
 Copy-Item -LiteralPath (Join-Path $root '.env.example') -Destination (Join-Path $config 'app.env.example')
 Copy-Item -LiteralPath (Join-Path $root 'LICENSE') -Destination $releaseRoot

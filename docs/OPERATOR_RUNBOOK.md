@@ -6,8 +6,7 @@
 2. Start with `scripts\start-local.ps1`; it binds loopback and prints the actual URL and log paths.
 3. Use Application Default Credentials for read-only project verification. Treat `setup required` or `unavailable` as a real provider state, not a completed connection.
 4. Keep local policy in plan mode until the Terraform worker deployment has passed the disposable-VM acceptance sequence below.
-5. For ngrok, run `scripts\start-ngrok.ps1`. Enter the generated operator token in the public login; never place it in the URL or logs.
-6. If ngrok reports `ERR_NGROK_334`, stop the existing endpoint through the owning account/session. Do not enable pooling because it can route traffic to an unverified local service.
+5. Keep Windows workstation access loopback-only. Public deployment targets Hetzner; follow `DEPLOYMENT_TARGET.md` and complete the disposable-VM acceptance sequence before opening public ingress.
 7. Enable HAI only with `HAI_CONNECTOR_ENABLED=true` and a connector adapter that supports bearer-authenticated Streamable HTTP. HAI authority is read-only.
 
 ## Initial rollout

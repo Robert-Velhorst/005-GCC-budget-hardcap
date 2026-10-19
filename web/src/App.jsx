@@ -299,7 +299,7 @@ function ActionsSection({ actions, audit }) {
 }
 
 function IntegrationsSection({ integrations }) {
-  const iconMap = { "google-cloud": Cloud, "cloud-audit": Cloud, "local-database": Database, ngrok: ExternalLink, hai: Link2, notifications: Bell };
+  const iconMap = { "google-cloud": Cloud, "cloud-audit": Cloud, "local-database": Database, "public-access": ExternalLink, hai: Link2, notifications: Bell };
   return (
     <section id="integrations" className="panel integrations" aria-labelledby="integrations-title">
       <div className="panel-heading"><div><h2 id="integrations-title">Integrations</h2><p>Configured and live are reported separately</p></div><Link2 aria-hidden="true" /></div>

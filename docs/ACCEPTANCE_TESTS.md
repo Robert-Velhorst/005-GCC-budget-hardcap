@@ -46,4 +46,4 @@ These tests are intentionally not marked complete without the operator's Google 
 
 Sign-off must record project, region, function revision, test VM, budget/topic, timestamps, log query, Firestore document IDs, Compute operation IDs, approver, and rollback confirmation. Do not place credentials or sensitive raw logs in the repository.
 
-Ngrok acceptance additionally requires the owning account to stop its already-online assigned endpoint (`ERR_NGROK_334` observed), then verify public login, secure cookie, authenticated overview, and teardown. Pooling is not an acceptable workaround because it may route to another local service.
+Hetzner public deployment acceptance remains external: verify the owned host, HTTPS domain, authenticated login, secure cookie, authenticated overview, and rollback before enabling real operations. The Windows portable launcher is loopback-only.

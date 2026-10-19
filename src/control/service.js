@@ -271,10 +271,10 @@ function integrations(controlConfig, provider, audit, config) {
       detail: audit.source === "local" ? "SQLite WAL settings and audit" : "SQLite WAL settings",
     },
     {
-      id: "ngrok",
-      name: "ngrok tunnel",
+      id: "public-access",
+      name: "Public ingress",
       state: controlConfig.publicAccessEnabled ? "configured" : "disabled",
-      detail: controlConfig.publicAccessEnabled ? "Token-protected public mode" : "Loopback only",
+      detail: controlConfig.publicAccessEnabled ? "Authenticated mode; TLS is provided by the Hetzner reverse proxy" : "Loopback only",
     },
     {
       id: "hai",
