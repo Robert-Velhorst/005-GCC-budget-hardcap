@@ -43,4 +43,4 @@ Provider adapters are isolated from parsing, policy, and orchestration. Tests us
 
 ## Remaining external validation
 
-The repository has not been deployed into the operator's Google Cloud account. Provider IAM, Eventarc delivery, billing-budget topic wiring, Firestore location, quotas, and stop/start behavior must be verified in that account with a disposable labelled VM. The ngrok account also reported `ERR_NGROK_334` because its assigned endpoint was already online; pooling was deliberately not enabled. See `docs/ACCEPTANCE_TESTS.md`.
+The repository has not been deployed into the operator's Google Cloud account. Provider IAM, Eventarc delivery, billing-budget topic wiring, Firestore location, quotas, and stop/start behavior must be verified in that account with a disposable labelled VM. Hetzner public deployment acceptance remains an external gate; the workstation tunnel has been retired. See `docs/ACCEPTANCE_TESTS.md`.

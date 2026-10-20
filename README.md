@@ -67,7 +67,7 @@ The repository provides:
 - Terraform for the worker, health function, Pub/Sub, Firestore, service account, and least-privilege IAM;
 - separate locked Docker images for the control plane and cloud function;
 - a portable Windows x64 package builder;
-- an optional authenticated ngrok launcher;
+- loopback-only Windows startup plus a separate Hetzner production target;
 - an optional read-only MCP connector for HAI;
 - automated unit, integration, security-boundary, smoke, build, and CI checks.
 
@@ -239,7 +239,7 @@ The following describes this repository revision, not a promise about any runnin
 | Compute Engine adapter | Implemented and automated-test covered | Real authenticated REST list/get/start/stop/operation calls; provider failures and request deadlines are covered. |
 | Firestore audit and idempotency | Implemented and automated-test covered | Event claims, leases, actions, pending-operation resumption, managed ownership, control state, and TTL fields. |
 | Windows operator application | Implemented and locally verified | Setup, loopback launch, authentication boundary, provider states, preview, policy review, audit views, and portable package were exercised. |
-| Public ngrok route | Implemented and acceptance tested | A dedicated authenticated route was tested, including unauthenticated rejection. The repository does not install an always-on tunnel service. |
+| Hetzner deployment | Target documented; live acceptance pending | Public hosting requires separate Hetzner, domain, TLS, and operator acceptance. |
 | HAI MCP connector | Implemented and automated-test covered | Disabled by default, separate bearer token, read-only status and incident tools. |
 | Terraform and Docker | Implemented and locally validated | Terraform formatting/init/validation and both non-root Docker runtime paths were checked. |
 | GitHub Actions | Implemented | CI installs locked dependencies, checks syntax, runs coverage, builds the web client, runs smoke tests, audits dependencies, and builds both images. |
@@ -249,7 +249,7 @@ The following describes this repository revision, not a promise about any runnin
 | Multi-project or organization-wide operation | Not implemented | The current architecture accepts one `PROJECT_ID`. |
 | Live load and quota baseline | Not completed | Automated bounds exist, but provider-scale behavior has not been measured in a live account. |
 
-The latest recorded full implementation baseline contains 66 passing tests, coverage above the configured thresholds, a successful production web build, a test-only smoke run, a clean dependency audit at that time, Terraform validation, Docker runtime checks, browser checks, and Windows package checks. A fresh audit must always be treated as authoritative; the 2026-09-05 audit now reports one high and one moderate transitive advisory. See [Testing and verification](#testing-and-verification) and [docs/FINAL_VERIFICATION_REPORT.md](docs/FINAL_VERIFICATION_REPORT.md). The verification report records the original ngrok endpoint conflict; a later commit added and verified dedicated-domain support.
+The latest recorded full implementation baseline contains 66 passing tests, coverage above the configured thresholds, a successful production web build, a test-only smoke run, a clean dependency audit at that time, Terraform validation, Docker runtime checks, browser checks, and Windows package checks. A fresh audit must always be treated as authoritative; the 2026-09-05 audit now reports one high and one moderate transitive advisory. See [Testing and verification](#testing-and-verification) and [docs/FINAL_VERIFICATION_REPORT.md](docs/FINAL_VERIFICATION_REPORT.md). That verification report predates retirement of the workstation tunnel and is historical evidence only.
 
 ## Windows quick start
 
@@ -338,30 +338,9 @@ cedcf8d57e53f4f21f551c70165acd7dd936f3fe193108b001fd033c191a4eee
 
 Always compare a newly built artifact with the newly generated checksum rather than assuming an older checksum still applies.
 
-### Optional authenticated ngrok access
+### Public deployment target
 
-Install and authenticate ngrok separately, then run:
-
-```powershell
-.\scripts\start-ngrok.ps1
-```
-
-For a reserved ngrok domain:
-
-```powershell
-.\scripts\start-ngrok.ps1 -Domain your-domain.ngrok.app
-```
-
-The launcher:
-
-- starts the control plane on loopback;
-- forces public authentication and trusted-proxy handling;
-- requires the generated operator token to be at least 32 characters;
-- validates a supplied hostname;
-- disables the local ngrok inspection interface;
-- stops the local child process when ngrok exits.
-
-The URL is available only while the launcher and ngrok process are running unless the operator separately installs a durable service. Do not expose the local server directly to the internet.
+Public deployment targets Hetzner. The Windows portable launcher intentionally stays on loopback; follow the repository-root `DEPLOYMENT_TARGET.md` and operator runbook for the hosted deployment and acceptance gates.
 
 ## Using the dashboard
 
@@ -371,7 +350,7 @@ The dashboard provides these main operator views:
 - **Instances:** all Compute Engine VMs visible in the configured project, with running/stopped state and the reason each VM is eligible or excluded.
 - **Actions:** recent action records from the selected audit source.
 - **Policy:** local plan/execute, automation, recovery, budget amount, threshold, and action-cap controls.
-- **Integrations:** Google Cloud, database, cloud audit, ngrok, HAI, and notification connection states.
+- **Integrations:** Google Cloud, database, cloud audit, public ingress mode, HAI, and notification connection states.
 
 ### Important dashboard behavior
 
@@ -633,7 +612,7 @@ Copy `.env.example` to `.env.local` for local use. Comma-separated lists are tri
 | `LOCAL_DATABASE_PATH` | `.runtime/budget-hardcap.db` | filesystem path | SQLite policy and local audit database. |
 | `CONTROL_AUDIT_SOURCE` | `local` | `local`, `firestore` | Select local or deployed-worker audit reads. |
 | `PUBLIC_ACCESS_ENABLED` | `false` | boolean | Enforce public-mode authentication controls. |
-| `TRUST_PROXY` | `false` | boolean | Honor the intended proxy boundary; launcher enables it for ngrok. |
+| `TRUST_PROXY` | `false` | boolean | Honor the intended proxy boundary; set it only behind the reviewed Hetzner reverse proxy. |
 | `CONTROL_PLANE_TOKEN` | empty | at least 32 characters for public mode | Operator login/bearer secret. |
 | `SESSION_TTL_MINUTES` | `480` | integer 15 to 1,440 | Operator session lifetime. |
 | `PROVIDER_CACHE_SECONDS` | `30` | integer 5 to 300 | Google inventory cache lifetime. |
@@ -904,7 +883,7 @@ Passing tests do not prove that a specific Google Cloud account has correct bill
 8. **Recovery follows budget notifications.** Because notification data can be delayed or out of order, recovery is conservative but cannot guarantee an exact restart time.
 9. **Dashboard policy is not deployment control.** Local changes do not reconfigure the cloud worker.
 10. **No completed live provider acceptance.** Automated behavior and the local application have been verified, subject to the separately disclosed dependency advisories, but this revision has not passed an authorized real Google Cloud stop/restart test.
-11. **No always-on public service.** The ngrok launcher creates a tunnel for the life of the process; service installation, domain ownership, ngrok account policy, monitoring, and availability remain external operations.
+11. **No live public deployment is claimed.** The Windows portable launcher is loopback-only. Hetzner host, domain, TLS, monitoring, and operator acceptance remain external deployment gates.
 12. **Cloud Logging retention is external.** Logging retention, exports, alerting, and legal/compliance policy must be configured in the Google Cloud account.
 13. **No live scale baseline.** Action caps and deadlines are implemented, but live API quota/load behavior has not been benchmarked.
 14. **Single-operator local model.** The control plane uses an operator token rather than team accounts, per-user roles, SSO, or tenant isolation.
@@ -947,14 +926,6 @@ The production control plane returns `WEB_BUILD_MISSING` when `web/dist/index.ht
 - Do not make the operator and HAI tokens equal.
 - Check `.runtime\public-control.error.log` without sharing its contents publicly.
 - Repeated failed logins are deliberately rate-limited.
-
-### ngrok exits immediately
-
-- Confirm ngrok is installed, on `PATH`, and authenticated.
-- Confirm the reserved domain belongs to the active ngrok account.
-- Supply only a lowercase hostname to `-Domain`, without `https://` or a path.
-- Confirm no other endpoint is already using the same reserved domain.
-- The launcher stops the local control process when ngrok fails; fix the error and relaunch.
 
 ### No VM is eligible
 

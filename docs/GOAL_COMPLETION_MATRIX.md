@@ -97,7 +97,7 @@ Status reflects repository implementation, not unperformed Google Cloud account 
 | 090 No vanity work | Implemented | Inapplicable product surfaces omitted |
 | 091 Feature definition of done | Implemented | Tests/docs/wiring required per critical path |
 | 092 Fresh-clone dry run | Implemented | Node 22/24 install, lint, coverage, build, smoke, both clean images, portable release |
-| 093 Manual evidence | Partial | Browser/Windows evidence complete; live provider and durable ngrok acceptance blocked |
+| 093 Manual evidence | Partial | Browser/Windows evidence complete; live provider and Hetzner deployment acceptance blocked; workstation tunnel retired |
 | 094 No-excuses search | Implemented | Placeholder, secret, generated-file, diff, and status scans |
 | 095 Completion matrix | Implemented | This document |
 | 096 Final verification | Implemented | `docs/FINAL_VERIFICATION_REPORT.md` |
