@@ -1,4 +1,4 @@
-FROM node:26.12.0-bookworm-slim@sha256:298992629d69bbd5b2b03ad57094d8e4fcb3a8eeb7c4e25d29de656519568913 AS build
+FROM node:26.12.1-bookworm-slim@sha256:28147155d47dc31abe0a46e0d12b59b2fb3d0a2dcc5dc65fce76a074180b16fe AS build
 ARG NPM_VERSION=12.2.1
 
 WORKDIR /app
@@ -9,7 +9,7 @@ COPY vite.config.js ./
 COPY web ./web
 RUN npm run build:web
 
-FROM node:26.12.0-bookworm-slim@sha256:298992629d69bbd5b2b03ad57094d8e4fcb3a8eeb7c4e25d29de656519568913 AS production-dependencies
+FROM node:26.12.1-bookworm-slim@sha256:28147155d47dc31abe0a46e0d12b59b2fb3d0a2dcc5dc65fce76a074180b16fe AS production-dependencies
 ARG NPM_VERSION=12.2.1
 
 WORKDIR /app
@@ -20,7 +20,7 @@ RUN npm install --global "npm@${NPM_VERSION}"
 COPY deploy/control/package.json deploy/control/package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 
-FROM node:26.12.0-bookworm-slim@sha256:298992629d69bbd5b2b03ad57094d8e4fcb3a8eeb7c4e25d29de656519568913 AS runtime
+FROM node:26.12.1-bookworm-slim@sha256:28147155d47dc31abe0a46e0d12b59b2fb3d0a2dcc5dc65fce76a074180b16fe AS runtime
 ARG NPM_VERSION=12.2.1
 
 ENV NODE_ENV=production \
