@@ -9,3 +9,10 @@ node_modules
 test
 tmp
 *.log
+
+.native
+
+.env
+.env.*
+**/.env
+**/.env.*

@@ -17,3 +17,5 @@ infra/terraform/*.tfplan
 infra/terraform/budget-hardcap-source.zip
 .DS_Store
 Thumbs.db
+
+.native/

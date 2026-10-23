@@ -258,7 +258,7 @@ This section runs the local dashboard in read-only mode. It does not deploy anyt
 ### Requirements
 
 - Windows 11.
-- Node.js 22, 23, or 24; Node.js 22 LTS is recommended. Node.js 25 is intentionally rejected.
+- Node.js 24.22.1+ in the 24.x line or 26.12.1+ in the 26.x line; npm 12.2.1. SQLite source builds require Python 3 and a C++ build toolchain.
 - npm, included with Node.js.
 - Google Cloud CLI only if you want real project and VM information.
 - Permission to view the selected Google Cloud project.
@@ -330,7 +330,7 @@ npm run build:windows
 
 The ZIP and its SHA-256 file are created under `dist`. The archive excludes local tokens, environment files, databases, credentials, and logs. After extraction, launch `Start GCC Budget Hardcap.cmd`; first run creates account-restricted local secrets. No separate Node.js installation is required for the extracted package.
 
-The last recorded verified Windows artifact used bundled Node.js 24.14 and had SHA-256:
+The earlier recorded Windows artifact used bundled Node.js 24.14 and had SHA-256:
 
 ```text
 cedcf8d57e53f4f21f551c70165acd7dd936f3fe193108b001fd033c191a4eee
@@ -367,17 +367,19 @@ The dashboard provides these main operator views:
 
 ### Supported runtime
 
-- Node.js `>=22 <25`
-- npm with the committed lockfile
+- Node.js `>=24.22.1 <25 || >=26.12.1 <27`
+- npm 12.2.1 with the committed lockfiles
+- Python 3 and a C++ toolchain for the pinned SQLite 3.54.1 build
 
-The cloud deployment itself uses the Google `nodejs22` runtime.
+The optional managed Cloud Run function configuration uses `nodejs24`, the latest generally available managed Node runtime. Google lists `nodejs26` as Preview. Self-hosted containers use Node 26.12.1; see [stable dependency verification](docs/STABLE_DEPENDENCIES_2026-10.md) for the upstream CloudEvents engine-metadata warning.
 
 ### Install and verify
 
 On Windows PowerShell:
 
 ```powershell
-npm ci
+npm ci --ignore-scripts
+npm run build:sqlite
 npm run verify
 npm audit --audit-level=moderate
 ```
@@ -385,7 +387,8 @@ npm audit --audit-level=moderate
 On Linux or macOS:
 
 ```sh
-npm ci
+npm ci --ignore-scripts
+npm run build:sqlite
 npm run verify
 npm audit --audit-level=moderate
 ```
@@ -789,7 +792,8 @@ The repository threat model and operating boundaries are documented in [docs/SEC
 ### Local quality gate
 
 ```sh
-npm ci
+npm ci --ignore-scripts
+npm run build:sqlite
 npm run verify
 npm audit --audit-level=moderate
 git diff --check
@@ -824,7 +828,7 @@ The latest recorded full baseline passed 66 tests with approximately 90.75% line
 
 ### GitHub Actions
 
-`.github/workflows/ci.yml` runs on pull requests and pushes. It uses Node.js 22 and performs:
+`.github/workflows/ci.yml` runs on pull requests and pushes. It uses Node.js 26.12.1, compiles the pinned SQLite 3.54.1 source, and performs:
 
 1. locked dependency installation;
 2. syntax checks;
@@ -995,3 +999,16 @@ Useful current Google Cloud references:
 ## License
 
 This project is licensed under the [ISC License](LICENSE).
+
+
+## October 2026 stable runtime update
+
+The current draft baseline uses Firestore 9.4.0, UUID 14.0.3, Vite 8.3.5, Lucide 1.61.0 and a separately verified SQLite 3.54.1 native binding. The application checks the active database engine and refuses a missing or older binding. `npm run build:sqlite` downloads hash-pinned official source and compiles it with the pinned node-gyp tool; it does not open or migrate an operator database.
+
+The Windows packager accepts a fresh output directory under `dist`; existing outputs are preserved. For example:
+
+```powershell
+npm run build:windows -- -OutputDirectory dist/GCC-Budget-Hardcap-Windows-x64-stable-20261023
+```
+
+A local Windows x64 archive built on 2026-10-23 bundles Node 26.12.1 and SQLite 3.54.1. Its SHA-256 is `f00d5ced624f2d888e9844876e4158f7fa069699d57caefb8182bd35b06174d1`. It is a local verification artifact, not a published release. Its native receipt, archive CRC and bundled runtime were checked; runtime database/configuration/credential files were absent. See [verification and remaining limits](docs/STABLE_DEPENDENCIES_2026-10.md).

@@ -6,7 +6,7 @@
   "main": "index.js",
   "type": "commonjs",
   "engines": {
-    "node": ">=24 <25 || >=26 <27"
+    "node": ">=24.22.1 <25 || >=26.12.1 <27"
   },
   "scripts": {
     "start": "functions-framework --target=manageInstancesOnBudget --signature-type=cloudevent",
@@ -23,7 +23,9 @@
     "doctor": "node scripts/doctor.js",
     "reconcile": "node scripts/reconcile.js",
     "support:bundle": "node scripts/support-bundle.js",
-    "verify": "npm run lint && npm run test:coverage && npm run build:web && npm run smoke"
+    "verify": "npm run verify:sqlite && npm run lint && npm run test:coverage && npm run build:web && npm run smoke",
+    "build:sqlite": "node scripts/build-sqlite.js",
+    "verify:sqlite": "node scripts/verify-sqlite.js"
   },
   "keywords": [
     "google-cloud",
@@ -34,7 +36,7 @@
   ],
   "license": "ISC",
   "dependencies": {
-    "@google-cloud/firestore": "9.3.1",
+    "@google-cloud/firestore": "9.4.0",
     "@google-cloud/functions-framework": "5.0.5",
     "@modelcontextprotocol/sdk": "1.32.1",
     "better-sqlite3": "13.0.3",
@@ -44,12 +46,13 @@
   "devDependencies": {
     "@vitejs/plugin-react": "6.1.2",
     "c8": "12.0.0",
-    "lucide-react": "1.60.0",
+    "lucide-react": "1.61.0",
     "react": "19.3.1",
     "react-dom": "19.3.1",
-    "vite": "8.3.4"
+    "vite": "8.3.5",
+    "node-gyp": "13.1.0"
   },
   "overrides": {
-    "uuid": "11.1.1"
+    "uuid": "14.0.3"
   }
 }

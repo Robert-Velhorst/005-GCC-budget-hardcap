@@ -2,7 +2,7 @@
 
 ## Windows control plane
 
-1. Install Node.js 22 LTS, run `scripts\setup-local.ps1`, and review `.env.local` before connecting provider credentials.
+1. Install patched Node.js 24.22.1+ or 26.12.1+, Python 3 and a C++ toolchain; run `npm ci --ignore-scripts` and `npm run build:sqlite`, then run `scripts\setup-local.ps1`, and review `.env.local` before connecting provider credentials.
 2. Start with `scripts\start-local.ps1`; it binds loopback and prints the actual URL and log paths.
 3. Use Application Default Credentials for read-only project verification. Treat `setup required` or `unavailable` as a real provider state, not a completed connection.
 4. Keep local policy in plan mode until the Terraform worker deployment has passed the disposable-VM acceptance sequence below.

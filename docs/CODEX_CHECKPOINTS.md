@@ -5,7 +5,7 @@
 - Repository: `Noodzakelijk-Online/005-GCC-budget-hardcap`
 - Working branch: `main`
 - Starting commit: `51a6644`; implementation checkpoint: `a4f906c`.
-- Product: Node.js 22 Cloud Function plus Windows/web control plane, Pub/Sub input, Compute provider, Firestore cloud audit, SQLite local audit.
+- Product: managed Node.js 24 Cloud Function / Node.js 26.12.1 container plus Windows/web control plane, Pub/Sub input, Compute provider, Firestore cloud audit, SQLite local audit.
 - Default safety posture: `plan` and automation disabled; automatic restart is configured but cannot act until the full automation is approved.
 - Test-only behavior: `scripts/smoke.js` and test fakes only; production code has no fake-provider switch.
 - Required next external step: operator-reviewed `terraform plan`, plan-mode deployment, then disposable-VM acceptance.
