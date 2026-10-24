@@ -1,4 +1,4 @@
-FROM node:26.12.0-bookworm-slim@sha256:298992629d69bbd5b2b03ad57094d8e4fcb3a8eeb7c4e25d29de656519568913 AS build
+FROM node:26.12.1-bookworm-slim@sha256:28147155d47dc31abe0a46e0d12b59b2fb3d0a2dcc5dc65fce76a074180b16fe AS build
 ARG NPM_VERSION=12.2.1
 
 WORKDIR /app
@@ -9,7 +9,7 @@ COPY vite.config.js ./
 COPY web ./web
 RUN npm run build:web
 
-FROM node:26.12.0-bookworm-slim@sha256:298992629d69bbd5b2b03ad57094d8e4fcb3a8eeb7c4e25d29de656519568913 AS production-dependencies
+FROM node:26.12.1-bookworm-slim@sha256:28147155d47dc31abe0a46e0d12b59b2fb3d0a2dcc5dc65fce76a074180b16fe AS production-dependencies
 ARG NPM_VERSION=12.2.1
 
 WORKDIR /app
@@ -18,9 +18,14 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 RUN npm install --global "npm@${NPM_VERSION}"
 COPY deploy/control/package.json deploy/control/package-lock.json ./
-RUN npm ci --omit=dev && npm cache clean --force
+COPY sqlite-build.json ./
+COPY scripts/build-sqlite.js ./scripts/build-sqlite.js
+RUN npm ci --include=dev --ignore-scripts \
+    && node scripts/build-sqlite.js \
+    && npm prune --omit=dev --ignore-scripts \
+    && npm cache clean --force
 
-FROM node:26.12.0-bookworm-slim@sha256:298992629d69bbd5b2b03ad57094d8e4fcb3a8eeb7c4e25d29de656519568913 AS runtime
+FROM node:26.12.1-bookworm-slim@sha256:28147155d47dc31abe0a46e0d12b59b2fb3d0a2dcc5dc65fce76a074180b16fe AS runtime
 ARG NPM_VERSION=12.2.1
 
 ENV NODE_ENV=production \
@@ -31,6 +36,8 @@ WORKDIR /app
 
 COPY deploy/control/package.json ./package.json
 COPY --from=production-dependencies /app/node_modules ./node_modules
+COPY --from=production-dependencies /app/.native ./.native
+COPY sqlite-build.json ./sqlite-build.json
 COPY index.js ./
 COPY src ./src
 COPY --from=build /app/web/dist ./web/dist

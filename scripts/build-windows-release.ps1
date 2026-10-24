@@ -21,17 +21,19 @@ $distRoot = [IO.Path]::GetFullPath((Join-Path $root 'dist'))
 if (-not $releaseRoot.StartsWith("$distRoot$([IO.Path]::DirectorySeparatorChar)", [StringComparison]::OrdinalIgnoreCase)) {
     throw 'Windows release output must stay under the repository dist directory.'
 }
+if ((Test-Path -LiteralPath $releaseRoot) -or (Test-Path -LiteralPath "$releaseRoot.zip") -or (Test-Path -LiteralPath "$releaseRoot.zip.sha256")) {
+    throw 'Release output already exists. Pass -OutputDirectory with a fresh directory under dist.'
+}
 
 if (-not $SkipInstall) {
     Invoke-Npm ci
     if ($LASTEXITCODE -ne 0) { throw 'npm ci failed.' }
 }
+Invoke-Npm run build:sqlite
+if ($LASTEXITCODE -ne 0) { throw 'The pinned SQLite build failed.' }
 Invoke-Npm run build:web
 if ($LASTEXITCODE -ne 0) { throw 'The web build failed.' }
 
-if (Test-Path -LiteralPath $releaseRoot) {
-    Remove-Item -LiteralPath $releaseRoot -Recurse -Force
-}
 $app = Join-Path $releaseRoot 'app'
 $runtime = Join-Path $releaseRoot 'runtime'
 $scripts = Join-Path $releaseRoot 'scripts'
@@ -50,6 +52,8 @@ try {
 
 Copy-Item -LiteralPath (Join-Path $root 'index.js') -Destination $app
 Copy-Item -LiteralPath (Join-Path $root 'src') -Destination $app -Recurse
+Copy-Item -LiteralPath (Join-Path $root 'sqlite-build.json') -Destination $app
+Copy-Item -LiteralPath (Join-Path $root '.native') -Destination $app -Recurse
 New-Item -ItemType Directory -Path (Join-Path $app 'web') | Out-Null
 Copy-Item -LiteralPath (Join-Path $root 'web\dist') -Destination (Join-Path $app 'web') -Recurse
 Copy-Item -LiteralPath $nodeExecutable -Destination (Join-Path $runtime 'node.exe')
@@ -62,7 +66,7 @@ Copy-Item -LiteralPath (Join-Path $root 'LICENSE') -Destination $releaseRoot
 
 Push-Location -LiteralPath $app
 try {
-    & (Join-Path $runtime 'node.exe') -e "require('better-sqlite3'); require('@modelcontextprotocol/sdk/server/mcp.js');"
+    & (Join-Path $runtime 'node.exe') -e "const d=require('./src/control/sqlite-runtime').openDatabase(':memory:'); d.close(); require('@modelcontextprotocol/sdk/server/mcp.js');"
     if ($LASTEXITCODE -ne 0) { throw 'Bundled native/runtime dependency verification failed.' }
 } finally {
     Pop-Location
@@ -79,13 +83,20 @@ if ($forbiddenRuntimeState | Where-Object { Test-Path -LiteralPath $_ }) {
 }
 
 $zip = "$releaseRoot.zip"
-if (Test-Path -LiteralPath $zip) { Remove-Item -LiteralPath $zip -Force }
+if (Test-Path -LiteralPath $zip) { throw 'Release archive already exists; choose a fresh output directory.' }
 $archiveTool = (Get-Command tar.exe -ErrorAction Stop).Source
 & $archiveTool -a -c -f $zip -C (Split-Path -Parent $releaseRoot) (Split-Path -Leaf $releaseRoot)
 if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $zip) -or (Get-Item $zip).Length -eq 0) {
     throw 'Portable release archive creation failed.'
 }
-$hash = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+$archiveStream = [IO.File]::OpenRead($zip)
+$archiveHasher = [Security.Cryptography.SHA256]::Create()
+try {
+    $hash = [BitConverter]::ToString($archiveHasher.ComputeHash($archiveStream)).Replace('-', '').ToLowerInvariant()
+} finally {
+    $archiveStream.Dispose()
+    $archiveHasher.Dispose()
+}
 Set-Content -LiteralPath "$zip.sha256" -Value "$hash  $([IO.Path]::GetFileName($zip))" -Encoding ascii
 
 Write-Host "Portable Windows release: $zip"
