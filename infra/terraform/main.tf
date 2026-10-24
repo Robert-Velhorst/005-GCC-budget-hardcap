@@ -36,19 +36,29 @@ resource "google_storage_bucket" "source" {
 }
 
 data "archive_file" "source" {
-  type        = "zip"
-  source_dir  = "${path.module}/../.."
-  output_path = "${path.module}/budget-hardcap-source.zip"
-  excludes = [
-    ".git",
-    ".github",
-    "coverage",
-    "docs",
-    "infra",
-    "node_modules",
-    "test",
-    "tmp",
-  ]
+  type             = "zip"
+  output_path      = "${path.module}/budget-hardcap-source.zip"
+  output_file_mode = "0644"
+
+  source {
+    content  = file("${path.module}/../../index.js")
+    filename = "index.js"
+  }
+  source {
+    content  = file("${path.module}/../../deploy/function/package.json")
+    filename = "package.json"
+  }
+  source {
+    content  = file("${path.module}/../../deploy/function/package-lock.json")
+    filename = "package-lock.json"
+  }
+  dynamic "source" {
+    for_each = fileset("${path.module}/../..", "src/*.js")
+    content {
+      content  = file("${path.module}/../../${source.value}")
+      filename = source.value
+    }
+  }
 }
 
 resource "google_storage_bucket_object" "source" {
@@ -146,7 +156,7 @@ resource "google_cloudfunctions2_function" "budget_hardcap" {
   location = var.region
 
   build_config {
-    runtime     = "nodejs22"
+    runtime     = "nodejs24"
     entry_point = "manageInstancesOnBudget"
     source {
       storage_source {
@@ -201,7 +211,7 @@ resource "google_cloudfunctions2_function" "health" {
   location = var.region
 
   build_config {
-    runtime     = "nodejs22"
+    runtime     = "nodejs24"
     entry_point = "healthCheck"
     source {
       storage_source {

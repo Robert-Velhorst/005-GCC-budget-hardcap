@@ -2,7 +2,7 @@
 
 const fs = require("node:fs");
 const path = require("node:path");
-const Database = require("better-sqlite3");
+const { openDatabase } = require("./sqlite-runtime");
 const { ProviderError } = require("../errors");
 const { safeDocumentId } = require("../store");
 
@@ -10,7 +10,7 @@ const SCHEMA_VERSION = 1;
 
 function createSqliteStore(config, options = {}) {
   fs.mkdirSync(path.dirname(config.databasePath), { recursive: true });
-  const db = options.database || new Database(config.databasePath, { timeout: 5000 });
+  const db = options.database || openDatabase(config.databasePath, { timeout: 5000 });
   db.pragma("journal_mode = WAL");
   db.pragma("foreign_keys = ON");
   db.pragma("synchronous = NORMAL");
