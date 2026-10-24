@@ -1,17 +1,17 @@
 terraform {
-  required_version = ">= 1.7.0"
+  required_version = "= 1.17.0"
   required_providers {
     archive = {
       source  = "hashicorp/archive"
-      version = "~> 2.7"
+      version = "= 2.8.1"
     }
     google = {
       source  = "hashicorp/google"
-      version = "~> 8.7"
+      version = "= 8.8.1"
     }
     random = {
       source  = "hashicorp/random"
-      version = "~> 3.7"
+      version = "= 3.9.1"
     }
   }
 }

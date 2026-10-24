@@ -1,0 +1,66 @@
+name: Terraform configuration validation
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      TF_IN_AUTOMATION: '1'
+      CHECKPOINT_DISABLE: '1'
+      TF_CLI_CONFIG_FILE: ${{ runner.temp }}/budget-hardcap-empty.tfrc
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Prepare an empty CLI configuration
+        shell: bash
+        run: printf 'disable_checkpoint = true\n' > "$TF_CLI_CONFIG_FILE"
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: '1.17.0'
+          terraform_wrapper: false
+      - name: Check formatting
+        run: terraform fmt -check -recursive infra/terraform
+      - name: Initialize locked providers without a backend
+        run: terraform -chdir=infra/terraform init -backend=false -input=false -lockfile=readonly
+      - name: Validate configuration without a cloud plan
+        shell: bash
+        run: |
+          set -euo pipefail
+          terraform -chdir=infra/terraform version -json > "$RUNNER_TEMP/terraform-version.json"
+          terraform -chdir=infra/terraform validate -json > "$RUNNER_TEMP/terraform-validate.json"
+          python3 - <<'PY'
+          import json, os, pathlib
+          temporary = pathlib.Path(os.environ['RUNNER_TEMP'])
+          version = json.loads((temporary / 'terraform-version.json').read_text())
+          required = pathlib.Path('.terraform-version').read_text().strip()
+          expected = {
+              'registry.terraform.io/hashicorp/archive': '2.8.1',
+              'registry.terraform.io/hashicorp/google': '8.8.1',
+              'registry.terraform.io/hashicorp/random': '3.9.1',
+          }
+          if version['terraform_version'] != required or required != '1.17.0':
+              raise RuntimeError('Unexpected Terraform SDK.')
+          if version['provider_selections'] != expected:
+              raise RuntimeError('Unexpected provider graph.')
+          validation = json.loads((temporary / 'terraform-validate.json').read_text())
+          if validation['valid'] is not True or validation['error_count'] != 0:
+              raise RuntimeError('Terraform configuration is invalid.')
+          PY
+          git diff --exit-code -- infra/terraform/.terraform.lock.hcl
+      - name: Retain schema validation evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: terraform-configuration-validation
+          path: |
+            ${{ runner.temp }}/terraform-version.json
+            ${{ runner.temp }}/terraform-validate.json
+          retention-days: 14
+          if-no-files-found: warn
