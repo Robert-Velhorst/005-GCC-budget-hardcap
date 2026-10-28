@@ -112,12 +112,19 @@ function safeEqual(actual, expected) {
 }
 
 function parseCookies(header) {
-  return header.split(";").reduce((cookies, item) => {
+  const cookies = Object.create(null);
+  for (const item of header.split(";")) {
     const index = item.indexOf("=");
-    if (index < 1) return cookies;
-    cookies[item.slice(0, index).trim()] = decodeURIComponent(item.slice(index + 1).trim());
-    return cookies;
-  }, {});
+    if (index < 1 || item.slice(0, index).trim() !== "gcc_session") continue;
+    try {
+      cookies.gcc_session = decodeURIComponent(item.slice(index + 1).trim());
+    } catch (error) {
+      if (!(error instanceof URIError)) throw error;
+      // A malformed session cookie invalidates the request's session identity.
+      return Object.create(null);
+    }
+  }
+  return cookies;
 }
 
 function clientKey(request, trustProxy) {
