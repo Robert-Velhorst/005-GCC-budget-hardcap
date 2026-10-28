@@ -17,7 +17,7 @@ original=out/'original-auth.cjs';original.write_bytes(git('show','67844d2fafd0af
 record={'captured_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'head':git('rev-parse','HEAD').decode().strip(),'tree':git('rev-parse','HEAD^{tree}').decode().strip(),'node':node,'new_external_dependencies':0,'original_cases_helpers_assertions_selectors_timeouts_commands_changed':False,'full_SDK_native_database_deployment_or_operator_acceptance':False}
 try:
     for label,source in [('original',original),('patched',root/'src/control/auth.js')]:
-        result=subprocess.run(['node',str(root/'.github/qualification/auth-cookie-cases.cjs'),str(source)],cwd=root,capture_output=True,text=True,timeout=60)
+        result=subprocess.run(['node',str(root/'.github/qualification/auth-cookie-cases.cjs'),label],cwd=root,capture_output=True,text=True,timeout=60)
         (out/(label+'-cases.log')).write_text(result.stdout+result.stderr);actual=json.loads(result.stdout);record[label]=actual
         assert actual['cases']==18 and actual['skipped']==0
         if label=='original':assert result.returncode!=0 and actual['failed']==12 and actual['passed']==6

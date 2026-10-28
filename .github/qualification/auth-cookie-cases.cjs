@@ -1,7 +1,8 @@
 "use strict";
 const assert=require("node:assert/strict");
-const path=require("node:path");
-const {createAuth}=require(path.resolve(process.argv[2]));
+const label=process.argv[2];
+assert.ok(label==="original"||label==="patched");
+const {createAuth}=label==="original"?require("../../AUTH_COOKIE_EVIDENCE/original-auth.cjs"):require("../../src/control/auth.js");
 const token="synthetic-operator-".repeat(3);
 const req=cookie=>({headers:{cookie,host:"synthetic.invalid"},socket:{remoteAddress:"203.0.113.8"}});
 function fixture(){
